@@ -1,0 +1,15 @@
+build/
+**/.gradle/
+**/build/
+local.properties
+**/local.properties
+*.jks
+*.keystore
+*.log
+.env
+*.apk
+*.class
+*.dex
+.idea/
+__pycache__/
+*.pyc

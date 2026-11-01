@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' version '8.5.2' }
+android {
+    namespace 'ru.main.explorer'
+    compileSdk 35
+    defaultConfig { applicationId 'ru.main.explorer'; minSdk 26; targetSdk 34 }
+    sourceSets {
+        main { manifest.srcFile '../AndroidManifest.xml'; java.srcDirs = ['../src']; assets.srcDirs = ['../assets']; res.srcDirs = ['../res'] }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+    testOptions { unitTests.includeAndroidResources = true }
+}
+dependencies { testImplementation 'junit:junit:4.13.2'; testImplementation 'org.robolectric:robolectric:4.16.1' }
+tasks.withType(Test).configureEach {
+    // Robolectric's real ParcelFileDescriptor close path reflects FileDescriptor on JDK 21.
+    jvmArgs '--add-opens=java.base/java.io=ALL-UNNAMED'
+    maxHeapSize = '2g'
+    systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+    testLogging { events 'passed','failed'; exceptionFormat 'full'; showStandardStreams = true }
+}
