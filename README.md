@@ -51,10 +51,10 @@ Large regional downloads can take hours and depend on public server availability
 - [Build and test guide](docs/BUILDING.md)
 - [Known limitations and verification scope](docs/KNOWN-LIMITATIONS.md)
 - [Map data and third-party attribution](docs/ATTRIBUTIONS.md)
-- [Source availability / licensing notice](LICENSE-NOTICE.md)
+- [MPL 2.0 license](LICENSE) and [scope / third-party exceptions](LICENSE-NOTICE.md)
 
 No account, analytics backend or automatic crash upload is implemented. Network map providers can see requested map areas and normal connection metadata. Routes, private photos and notes are stored on the device. See the privacy document for important exceptions and export implications.
 
-## Source availability
+## License
 
-This repository is public for inspection. **No general software license grant has been selected by the copyright holder.** Do not infer an MIT, Apache, GPL or other license from public visibility. Third-party map data and test fixtures retain their own terms. See `LICENSE-NOTICE.md`.
+The original MapNotes software source is licensed under **Mozilla Public License 2.0 (MPL-2.0)**. See [LICENSE](LICENSE) for the complete terms and [LICENSE-NOTICE.md](LICENSE-NOTICE.md) for coverage and exceptions. Third-party map data and test fixtures retain their own terms. Original illustration/image assets are not separately licensed by this software-license selection.
