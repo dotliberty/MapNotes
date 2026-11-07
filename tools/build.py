@@ -13,6 +13,9 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 ANDROID = '{http://schemas.android.com/apk/res/android}'
 
+def valid_version(version):
+    return bool(re.fullmatch(r'\d+\.\d+(?:\.\d+)?(?:-(?:alpha|beta|rc)\.[1-9]\d*)?', version or ''))
+
 def build():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--keystore', type=Path, help='Existing private keystore, kept outside the checkout')
@@ -31,8 +34,8 @@ def build():
         return result.stdout
     manifest = ET.parse(ROOT / 'AndroidManifest.xml').getroot()
     version = manifest.get(ANDROID + 'versionName', '')
-    if not re.fullmatch(r'\d+\.\d+(?:\.\d+)?', version or ''):
-        parser.error('Manifest versionName is not a numeric release version')
+    if not valid_version(version):
+        parser.error('Manifest versionName must be numeric, optionally followed by -alpha.N, -beta.N or -rc.N')
     output = ROOT / 'build'
     output.mkdir(exist_ok=True)
     work = output / 'sdk-build'

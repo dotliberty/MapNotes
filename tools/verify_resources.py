@@ -19,9 +19,17 @@ def load(path):
 def formats(value):
     return sorted(re.findall(r'%(?!%)(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]', value))
 
+def load_directory(path):
+    result = {}
+    for resource in sorted(path.glob('*.xml')):
+        strings = load(resource)
+        assert not result.keys() & strings.keys(), 'Duplicate string across resource files: ' + str(resource)
+        result.update(strings)
+    return result
+
 def main():
-    en = load(ROOT / 'res/values/strings.xml')
-    ru = load(ROOT / 'res/values-ru/strings.xml')
+    en = load_directory(ROOT / 'res/values')
+    ru = load_directory(ROOT / 'res/values-ru')
     assert en and en.keys() == ru.keys(), 'EN/RU string keys differ'
     for name in en:
         assert en[name] and ru[name], 'Empty string: ' + name
