@@ -4,7 +4,7 @@ import android.content.*;import android.graphics.*;import android.view.*;import 
 public class MapView extends View {
  double cx=128,cy=100;int zoom=2;boolean follow=true;volatile boolean online=true;boolean illustrated=true;
  private final Paint paint=new Paint(3);private final ArrayList<Path> lands=new ArrayList<>();
- private final android.util.LruCache<String,Bitmap> tiles=new android.util.LruCache<String,Bitmap>(24*1024*1024){protected int sizeOf(String k,Bitmap b){return b.getAllocationByteCount();}};
+ private final android.util.LruCache<String,Bitmap> tiles=new android.util.LruCache<String,Bitmap>(CacheBudget.imagery()){protected int sizeOf(String k,Bitmap b){return b.getAllocationByteCount();}};
  private final Set<String> pending=Collections.synchronizedSet(new HashSet<>());private final Set<String> failed=Collections.synchronizedSet(new HashSet<>());
  private final ExecutorService pool=Executors.newFixedThreadPool(2);private final ExecutorService satellitePool=Executors.newFixedThreadPool(2);
  private final Map<String,Long> satelliteRetryAt=new ConcurrentHashMap<>();private final Map<String,String> satelliteErrors=new ConcurrentHashMap<>();private SQLiteDatabase offline;private ArrayList<double[]> points=new ArrayList<>();

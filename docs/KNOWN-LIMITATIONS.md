@@ -22,7 +22,7 @@ No physical Android device was connected to the release environment. Generated s
 - Exploration is an approximation based on two-dimensional building geometry, not visibility analysis of real terrain, doors, trees or height. It is not suitable for emergency/navigation decisions.
 - Photo capture requires a fresh location fix (up to 30 seconds old). Digital zoom, lens selection and manual exposure are not implemented. Large JPEG sizes can increase memory use.
 - Dense photo callouts are bounded; not every thumbnail fits simultaneously. Zoom in or use the photo catalog. Full spatial indexing/pagination of every dataset is not implemented.
-- First-time rendering of a very long history or a new region can still require background work. Bounded caches can be evicted.
+- First-time rendering of a very long history or a new region can still require background work. Map caches are adaptive to the app heap, but on a low-memory device a bounded cache can still evict decoded geometry, which then reloads from disk.
 - Public map servers can time out, reject requests or rate-limit. Retry/failover/continuation do not guarantee service availability. A previous direct Java public-server probe failed on the development PC; successful curl retrieval was not a successful application end-to-end network test. Normal release tests use deterministic fixtures/local HTTP, not a claim of live server health.
 - Satellite imagery is the 2016 EOX mosaic, roughly 10 m/pixel. No current high-resolution satellite world is bundled.
 - Only one external MBTiles source is active at once. Unsupported schemas/providers may fail or require copying. A whole planet map can require many tens of GB.

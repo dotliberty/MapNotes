@@ -20,6 +20,43 @@ public class MapLoadingTest {
   OfflineAtlas old=new OfflineAtlas(context,true,()->{}),next=new OfflineAtlas(context,true,()->{});
   try {ArrayList<OfflineAtlas.Way> decoded=old.loadWays(old.areas.get(0));next.reuseGeometry(old);assertSame("Reload must reuse geometry before its first draw",decoded,next.ways(next.areas.get(0)));}finally{old.close();next.close();}
  }
+ @Test public void denseDownloadedRegionsStayDecodedWithoutEvictionReload()throws Exception {
+  Application app=RuntimeEnvironment.getApplication();File root=new File(app.getFilesDir(),"dense-"+UUID.randomUUID()),dir=new File(root,"regions");dir.mkdirs();
+  writeDenseRegion(new File(dir,"dense-one.json"),-.02);writeDenseRegion(new File(dir,"dense-two.json"),.02);
+  ContextWrapper context=new ContextWrapper(app){public File getFilesDir(){return root;}};
+  OfflineAtlas atlas=new OfflineAtlas(context);
+  try{assertEquals(2,atlas.areas.size());
+   ArrayList<OfflineAtlas.Way> first=atlas.loadWays(atlas.areas.get(0)),second=atlas.loadWays(atlas.areas.get(1));
+   assertSame("A dense region above the old point budget must remain decoded instead of reloading in a loop",first,atlas.ways(atlas.areas.get(0)));
+   assertSame(second,atlas.ways(atlas.areas.get(1)));
+  }finally{atlas.close();}
+ }
+ static void writeDenseRegion(File file,double south)throws Exception {
+  double west=.0;JSONArray elements=new JSONArray();
+  for(int i=0;i<20000;i++){JSONArray geometry=new JSONArray();for(int p=0;p<10;p++)geometry.put(new JSONObject().put("lat",south+.001+(i%100)*.0003+p*.00001).put("lon",west+.001+(i/100)*.0003+p*.00001));elements.put(new JSONObject().put("tags",new JSONObject().put("highway","residential")).put("geometry",geometry));}
+  MapPack.write(file,new JSONObject().put("mapnotes_bounds",MapPack.bounds(south,west,south+.04,west+.04)).put("elements",elements).toString().getBytes("UTF-8"),false);
+ }
+ @Test public void smallScaleUsesLighterOverviewGeometryWithoutBuildings()throws Exception {
+  Application app=RuntimeEnvironment.getApplication();File root=new File(app.getFilesDir(),"lod-"+UUID.randomUUID()),dir=new File(root,"regions");dir.mkdirs();
+  JSONArray building=new JSONArray();double[][] corners={{-.0004,-.0004},{-.0004,.0004},{0,.0004},{.0004,.0004},{.0004,0},{.0004,-.0004},{0,-.0004},{-.0004,-.0004},{-.0004,0},{-.0004,-.0004},{-.0002,-.0002},{-.0004,-.0004}};
+  for(double[] point:corners)building.put(new JSONObject().put("lat",point[0]).put("lon",point[1]));
+  JSONArray road=new JSONArray();for(int p=0;p<40;p++)road.put(new JSONObject().put("lat",.0015).put("lon",.001+p*2.0/111195.08));
+  JSONArray elements=new JSONArray().put(new JSONObject().put("tags",new JSONObject().put("building","yes")).put("geometry",building)).put(new JSONObject().put("tags",new JSONObject().put("highway","residential")).put("geometry",road));
+  MapPack.write(new File(dir,"lod.json"),new JSONObject().put("mapnotes_bounds",MapPack.bounds(-.001,.001,.002,.0025)).put("elements",elements).toString().getBytes("UTF-8"),false);
+  ContextWrapper context=new ContextWrapper(app){public File getFilesDir(){return root;}};
+  OfflineAtlas atlas=new OfflineAtlas(context);
+  try{OfflineAtlas.Area area=atlas.areas.get(0);
+   ArrayList<OfflineAtlas.Way> detail=atlas.loadWays(area),overview=atlas.loadWays(area,true);
+   assertEquals(2,detail.size());assertEquals(1,overview.size());
+   assertEquals("building",detail.get(0).type);assertEquals("road",overview.get(0).type);
+   assertEquals(80,detail.get(1).coords.length);
+   assertTrue("Overview polyline must drop sub-4 m vertices",overview.get(0).coords.length<80&&overview.get(0).coords.length>=8);
+   assertSame("Small scales must use the cached overview set",overview,atlas.ways(area,13));
+   assertSame("Large scales must use the cached detail set",detail,atlas.ways(area,15));
+   OfflineAtlas next=new OfflineAtlas(context);next.reuseGeometry(atlas);
+   try{assertSame("Reload must keep the overview set too",overview,next.ways(next.areas.get(0),13));assertSame(detail,next.ways(next.areas.get(0),15));}finally{next.close();}
+  }finally{atlas.close();}
+ }
  @Test public void atlasOnlyCompletesWithoutRequestingSatelliteAndCanUpgradeLater()throws Exception {
   Application app=RuntimeEnvironment.getApplication();File root=new File(app.getFilesDir(),"atlas-only-"+UUID.randomUUID());root.mkdirs();RegionPlan plan=new RegionPlan(55.748,37.612,500);
   MapPackTest.Fake first=new MapPackTest.Fake();new MapPack(root,plan,first,false).run();assertEquals(1,first.vectors);assertEquals(0,first.images);
