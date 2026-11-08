@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
  <string name="ok">OK</string>
- <string name="camera_facing">Camera direction</string>
+ <string name="camera_capture">Take photo</string>
+ <string name="camera_pinch_hint">Pinch to zoom · or tap the zoom value</string>
+ <string name="camera_auto_lens">Auto lens</string>
+ <string name="camera_manual_lens">Manual</string>
+ <string name="camera_light_hint">Continuous light: tap to turn on or off</string>
+ <string name="camera_facing">Choose front or rear camera</string>
  <string name="camera_lens">Lens</string>
  <string name="camera_zoom">Zoom</string>
  <string name="camera_front">Front</string>

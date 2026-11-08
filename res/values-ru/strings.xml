@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
  <string name="ok">ОК</string>
- <string name="camera_facing">Направление камеры</string>
+ <string name="camera_capture">Снять фото</string>
+ <string name="camera_pinch_hint">Зум щипком · или нажми на значение</string>
+ <string name="camera_auto_lens">Автообъектив</string>
+ <string name="camera_manual_lens">Вручную</string>
+ <string name="camera_light_hint">Постоянный свет: нажми для включения или выключения</string>
+ <string name="camera_facing">Выбрать фронтальную или заднюю камеру</string>
  <string name="camera_lens">Объектив</string>
  <string name="camera_zoom">Зум</string>
  <string name="camera_front">Фронтальная</string>
