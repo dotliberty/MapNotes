@@ -18,13 +18,15 @@ From the repository root:
 python tools/build.py
 ```
 
-This performs javac (Java 8 bytecode), jar, D8, aapt2 resource compilation/linking, classes.dex packaging and zipalign. The result is `build/MapNotes-1.0.0-unsigned.apk`. **Unsigned APKs are not installable.** Generated files and local signing material are not source files.
+This performs javac (Java 8 bytecode), jar, D8, aapt2 resource compilation/linking, classes.dex packaging and zipalign. The result is `build/MapNotes-1.2.0-unsigned.apk`. **Unsigned APKs are not installable.** Generated files and local signing material are not source files.
 
 To sign a local build, provide an existing keystore that you own outside the checkout and securely set the `MAPNOTES_STORE_PASSWORD` environment variable. Do not paste passwords into shell history, issue reports or commits. The script passes the password to apksigner by environment reference, not as a command-line value:
 
 ```sh
 python tools/build.py --keystore /secure/location/your-key.jks
 ```
+
+For a publisher release, use `--keystore` together with `--previous-apk` through your protected local credential workflow. This release was checked against the published v1.0.0 certificate; see [1.2.0 release verification](1.2-RELEASE.md). `--debug` instead builds a separate `.debug` app with an existing persistent user-local debug keystore and is never a release-signing substitute.
 
 An optional `--previous-apk /path/to/previous.apk` verifies that the new and previous APKs have the same public signing-certificate digest. The builder never creates or replaces a key. Keystores requiring a separate private-key password are not handled by this helper: use the SDK signing tools with your own secure credential workflow.
 

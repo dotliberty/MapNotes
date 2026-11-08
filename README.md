@@ -13,11 +13,15 @@ An Android walking journal that turns your route into an explored map, with geot
 
 ## Install
 
-Download `MapNotes-1.0.0.apk` and `SHA256SUMS` from the [1.0.0 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.0.0). Compare the APK SHA-256 with the checksum file before installation, then allow installation from your chosen browser/file manager if Android asks.
+Download `MapNotes-1.2.0.apk` and `SHA256SUMS` from the [1.2.0 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.2.0). Compare the APK SHA-256 with the checksum file before installation, then allow installation from your chosen browser/file manager if Android asks.
 
 **Existing MapNotes users: install over the previous version. Do not uninstall or clear app data.** The release keeps the `ru.main.explorer` package, existing signing certificate and SQLite v3 schema. Signing compatibility and migration logic are checked locally; an update of a real user's phone/database has not been exercised here. A separately signed local build cannot update the published APK.
 
 There is no full route/photo backup or restore workflow. Uninstalling or clearing storage removes private data. Exporting photos to the system gallery is not a route/database backup.
+
+## 1.2.0
+
+Stable 1.2.0 includes the atlas-style interface, collision-aware photo markers, manual camera/lens selection, bounded pinch zoom and corrected preview orientation. See [release verification and limitations](docs/1.2-RELEASE.md). Earlier beta verification documents are historical, not installation instructions for the stable APK.
 
 ## Screenshots
 
