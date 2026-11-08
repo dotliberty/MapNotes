@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+ <string name="ok">ОК</string>
+ <string name="camera_facing">Направление камеры</string>
+ <string name="camera_lens">Объектив</string>
+ <string name="camera_zoom">Зум</string>
+ <string name="camera_front">Фронтальная</string>
+ <string name="camera_rear">Задняя</string>
+ <string name="camera_device">Камера (может быть логической)</string>
+ <string name="camera_zoom_unavailable">Зум недоступен</string>
+ <string name="camera_selection_unavailable">Выбранная камера больше недоступна.</string>
+ <string name="camera_mode_unavailable">Камера не поддерживает это сочетание JPEG и предпросмотра. Выбери другой объектив или размер фото; подмены объектива не было.</string>
+ <string name="camera_availability">Доступность</string>
+ <string name="camera_availability_explanation">В списке только камеры, открытые Android Camera2: ID и фокусное расстояние в мм. Логическая камера может сама выбирать сенсор. Для конкретного объектива выбери физический ID. Android не гарантирует сочетания физического JPEG и предпросмотра: при несовместимости будет ошибка, а не подмена объектива. Скрытые объективы и недоступный зум здесь разблокировать нельзя.</string>
  <string name="language">Язык приложения</string>
  <string name="language_system">Как на устройстве</string>
  <string name="language_en">English</string>

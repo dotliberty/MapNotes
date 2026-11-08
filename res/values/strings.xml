@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+ <string name="ok">OK</string>
+ <string name="camera_facing">Camera direction</string>
+ <string name="camera_lens">Lens</string>
+ <string name="camera_zoom">Zoom</string>
+ <string name="camera_front">Front</string>
+ <string name="camera_rear">Rear</string>
+ <string name="camera_device">Camera device (may be logical)</string>
+ <string name="camera_zoom_unavailable">Zoom unavailable</string>
+ <string name="camera_selection_unavailable">The selected camera is no longer available.</string>
+ <string name="camera_mode_unavailable">This camera cannot use this JPEG/preview combination. Choose another lens or photo size; no lens was substituted.</string>
+ <string name="camera_availability">Availability</string>
+ <string name="camera_availability_explanation">Only cameras exposed by Android Camera2 are listed, with camera ID and focal length in mm. A logical camera may choose its sensor internally. Choose a physical ID to request a specific lens. Physical JPEG/preview combinations are not guaranteed by Android: unsupported modes show an error, never a replacement lens. Missing lenses and unavailable zoom cannot be unlocked here.</string>
  <string name="language">App language</string>
  <string name="language_system">Use device language</string>
  <string name="language_en">English</string>
