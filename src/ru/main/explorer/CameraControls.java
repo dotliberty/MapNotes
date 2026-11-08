@@ -23,6 +23,17 @@ final class CameraControls {
  boolean ratioApi,physicalCrop;
  Rect activeArray;
  CameraControls(CameraActivity owner){this.owner=owner;}
+ void attachPreview(TextureView preview){
+  ScaleGestureDetector detector=new ScaleGestureDetector(owner,new ScaleGestureDetector.SimpleOnScaleGestureListener(){
+   int token;
+   public boolean onScaleBegin(ScaleGestureDetector d){token=owner.cameraGeneration();return zoomEditable();}
+   public boolean onScale(ScaleGestureDetector d){return scaleZoom(d.getScaleFactor(),token);}
+  });
+  preview.setOnTouchListener((v,event)->{detector.onTouchEvent(event);if(event.getActionMasked()==MotionEvent.ACTION_UP)v.performClick();return true;});
+ }
+ boolean zoomEditable(){return editable()&&zoom!=null&&zoom.isEnabled()&&max>min;}
+ static float gestureRatio(float current,float factor,float min,float max){if(!Float.isFinite(factor)||factor<=0)return current;double next=(double)current*factor;return (float)Math.max(min,Math.min(max,next));}
+ boolean scaleZoom(float factor,int token){if(!zoomEditable()||token!=owner.cameraGeneration())return false;float next=gestureRatio(ratio,factor,min,max);if(next!=ratio){ratio=next;owner.repeatPreview();owner.refreshControls();}return true;}
  static final class Option {
   final String device,physical;final int facing;final float focal;
   Option(String device,String physical,int facing,float focal){this.device=device;this.physical=physical;this.facing=facing;this.focal=focal;}
@@ -31,7 +42,7 @@ final class CameraControls {
  void attach(LinearLayout header){
   LinearLayout row=new LinearLayout(owner);header.addView(row);
   facing=button(row,R.string.camera_facing);lens=button(row,R.string.camera_lens);zoom=button(row,R.string.camera_zoom);
-  facing.setOnClickListener(v->chooseFacing());lens.setOnClickListener(v->chooseLens());zoom.setOnClickListener(v->chooseZoom());
+  facing.setOnClickListener(v->chooseFacing());lens.setOnClickListener(v->chooseLens());zoom.setOnClickListener(v->chooseZoom());owner.attachPreviewZoom();
  }
  Button button(LinearLayout row,int label){Button b=new Button(owner);b.setText(Language.text(owner,label));b.setContentDescription(Language.text(owner,label));row.addView(b,new LinearLayout.LayoutParams(0,-2,1));return b;}
  static boolean usable(CameraCharacteristics c){StreamConfigurationMap m=c.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);return m!=null&&m.getOutputSizes(ImageFormat.JPEG)!=null&&m.getOutputSizes(ImageFormat.JPEG).length>0&&m.getOutputSizes(SurfaceTexture.class)!=null&&m.getOutputSizes(SurfaceTexture.class).length>0;}

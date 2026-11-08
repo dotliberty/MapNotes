@@ -16,14 +16,29 @@ ANDROID = '{http://schemas.android.com/apk/res/android}'
 def valid_version(version):
     return bool(re.fullmatch(r'\d+\.\d+(?:\.\d+)?(?:-(?:alpha|beta|rc)\.[1-9]\d*)?', version or ''))
 
+def debug_keystore():
+    """Only the standard, persistent, user-local debug identity; never create/replace it."""
+    path = Path.home() / '.android' / 'debug.keystore'
+    if path.resolve().is_relative_to(ROOT.resolve()):
+        raise ValueError('Debug keystore must be outside the checkout')
+    if not path.is_file():
+        raise ValueError('Persistent debug keystore is missing; creation requires explicit owner approval. No key was generated.')
+    return path
+
 def build():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--debug', action='store_true', help='Separate .debug application with generated disposable debug signing key; never reads release credentials')
+    parser.add_argument('--debug', action='store_true', help='Separate .debug application using existing ~/.android/debug.keystore; never creates keys or reads release credentials')
     parser.add_argument('--keystore', type=Path, help='Existing private keystore, kept outside the checkout')
     parser.add_argument('--previous-apk', type=Path, help='Require the same public signing certificate as this APK')
     args = parser.parse_args()
     if args.debug and (args.keystore or args.previous_apk):
         parser.error('--debug cannot use release signing arguments')
+    debug_key = None
+    if args.debug:
+        try:
+            debug_key = debug_keystore()
+        except ValueError as error:
+            parser.error(str(error))
     sdk_value = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
     java_value = os.environ.get('JAVA_HOME')
     if not sdk_value or not java_value:
@@ -35,6 +50,11 @@ def build():
         result = subprocess.run([str(x) for x in command], cwd=cwd, check=True,
                                 text=True, stdout=subprocess.PIPE if capture else None)
         return result.stdout
+    if debug_key is not None:
+        # Validate readability, public debug password and alias before touching build outputs.
+        # A missing, corrupt or locked existing identity is NEVER replaced.
+        run([java / ('keytool' + exe), '-list', '-keystore', debug_key,
+             '-storepass', 'android', '-alias', 'androiddebugkey'], capture=True)
     manifest = ET.parse(ROOT / 'AndroidManifest.xml').getroot()
     version = manifest.get(ANDROID + 'versionName', '')
     if not valid_version(version):
@@ -85,14 +105,10 @@ def build():
     result_apk = aligned
     if args.debug:
         # Standard public Android debug credentials, not publisher signing material.
-        debug_key = work / 'disposable-debug.jks'
-        run([java / ('keytool' + exe), '-genkeypair', '-noprompt', '-keystore', debug_key,
-             '-storepass', 'android', '-keypass', 'android', '-alias', 'androiddebugkey',
-             '-dname', 'CN=MapNotes disposable debug', '-keyalg', 'RSA', '-validity', '365'])
         result_apk = output / ('MapNotes-' + version + '-debug.apk')
-        run([*signer, 'sign', '--ks', debug_key, '--ks-pass', 'pass:android', '--out', result_apk, aligned])
+        run([*signer, 'sign', '--ks', debug_key, '--ks-key-alias', 'androiddebugkey',
+             '--ks-pass', 'pass:android', '--key-pass', 'pass:android', '--out', result_apk, aligned])
         print(run([*signer, 'verify', '--verbose', '--print-certs', result_apk], capture=True))
-        debug_key.unlink()
     elif args.keystore:
         if not args.keystore.is_file():
             parser.error('The specified existing keystore is missing; it will NOT be regenerated')
@@ -116,7 +132,7 @@ def build():
     print(run([bt / ('aapt2' + exe), 'dump', 'badging', result_apk], capture=True))
     digest = hashlib.sha256(result_apk.read_bytes()).hexdigest()
     print(digest + '  ' + result_apk.name)
-    print('Debug APK verified: separate .debug app, disposable certificate, not an official update.' if args.debug else 'Unsigned APKs cannot be installed. Use an independently owned signing key for local builds.' if not args.keystore else 'Signed APK verified.')
+    print('Debug APK verified: separate .debug app, persistent local debug certificate; not an official release update.' if args.debug else 'Unsigned APKs cannot be installed. Use an independently owned signing key for local builds.' if not args.keystore else 'Signed APK verified.')
 
 if __name__ == '__main__':
     build()
