@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ANDROID = '{http://schemas.android.com/apk/res/android}'
 
 def valid_version(version):
-    return bool(re.fullmatch(r'\d+\.\d+(?:\.\d+)?(?:-(?:alpha|beta|rc)\.[1-9]\d*)?', version or ''))
+    return bool(re.fullmatch(r'\d+\.\d+(?:\.\d+){0,2}(?:-(?:alpha|beta|rc)\.[1-9]\d*)?', version or ''))
 
 def debug_keystore():
     """Only the standard, persistent, user-local debug identity; never create/replace it."""

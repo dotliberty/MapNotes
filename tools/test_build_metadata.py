@@ -22,9 +22,9 @@ class BuildMetadataTest(unittest.TestCase):
             manifest.write_text('<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="9.8.7-beta.6" android:versionCode="765"/>', encoding='utf-8')
             self.assertEqual(('9.8.7-beta.6', 765), verify_debug_apk.expected_version(manifest))
     def test_release_and_explicit_prerelease_versions(self):
-        for version in ('1.0', '1.0.2', '1.1.0-beta.1', '2.0.0-alpha.2', '2.0.0-rc.12'):
+        for version in ('1.0', '1.0.2', '1.2.1.1', '1.2.1.1-rc.2', '1.1.0-beta.1', '2.0.0-alpha.2', '2.0.0-rc.12'):
             self.assertTrue(build.valid_version(version), version)
-        for version in ('', '../1.0', '1.0.0/evil', '1.0.0-beta', '1.0.0-beta.0', '1.0.0-beta.1/evil', '1.0.0;evil', '1.0.0\n'):
+        for version in ('1', '1.2.3.4.5', '1.2.3.', '1.2.3.4-beta.0', '', '../1.0', '1.0.0/evil', '1.0.0-beta', '1.0.0-beta.0', '1.0.0-beta.1/evil', '1.0.0;evil', '1.0.0\n'):
             self.assertFalse(build.valid_version(version), repr(version))
 
     def test_all_resource_files_are_audited_and_duplicates_rejected(self):
