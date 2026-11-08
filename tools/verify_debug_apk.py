@@ -36,7 +36,13 @@ def main():
     assert "targetSdkVersion:'35'" in badging and 'application-debuggable' in badging
     assert "application-label:'MapNotes beta DEBUG'" in badging
     certificate = run([java, '-jar', sdk / 'lib/apksigner.jar', 'verify', '--verbose', '--print-certs', apk])
-    assert 'Verifies' in certificate and 'MapNotes disposable debug' in certificate
+    assert 'Verifies' in certificate
+    public_cert = subprocess.run([str(Path(os.environ['JAVA_HOME']) / 'bin/keytool.exe'),
+                                 '-exportcert', '-keystore', str(Path.home() / '.android/debug.keystore'),
+                                 '-storepass', 'android', '-alias', 'androiddebugkey'],
+                                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+    signer_digest = re.search(r'Signer #1 certificate SHA-256 digest: (\S+)', certificate)
+    assert signer_digest and signer_digest.group(1).lower() == hashlib.sha256(public_cert).hexdigest()
     run([sdk / 'zipalign.exe', '-c', '4', apk])
     with zipfile.ZipFile(apk) as archive:
         assert archive.testzip() is None
@@ -44,7 +50,7 @@ def main():
     digest = hashlib.sha256(apk.read_bytes()).hexdigest()
     result = dict(apk=str(apk), bytes=apk.stat().st_size, sha256=digest,
                   package='ru.main.explorer.debug', version=version, versionCode=code,
-                  targetSdk=35, signature='verified disposable debug', zipalign='passed', zipCRC='passed')
+                  targetSdk=35, signature='verified persistent local debug', zipalign='passed', zipCRC='passed')
     if args.outbox:
         args.outbox.mkdir(parents=True, exist_ok=True)
         target = args.outbox / apk.name

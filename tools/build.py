@@ -48,7 +48,8 @@ def build():
     exe = '.exe' if os.name == 'nt' else ''
     def run(command, cwd=ROOT, capture=False):
         result = subprocess.run([str(x) for x in command], cwd=cwd, check=True,
-                                text=True, stdout=subprocess.PIPE if capture else None)
+                                text=True, encoding='utf-8', errors='replace',
+                                stdout=subprocess.PIPE if capture else None)
         return result.stdout
     if debug_key is not None:
         # Validate readability, public debug password and alias before touching build outputs.

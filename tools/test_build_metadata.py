@@ -14,7 +14,9 @@ spec.loader.exec_module(build)
 
 class BuildMetadataTest(unittest.TestCase):
     def test_debug_verifier_reads_manifest_version_without_hardcode(self):
-        self.assertEqual(('1.2.0-beta.2', 29), verify_debug_apk.expected_version(build.ROOT / 'AndroidManifest.xml'))
+        version, code = verify_debug_apk.expected_version(build.ROOT / 'AndroidManifest.xml')
+        self.assertTrue(build.valid_version(version))
+        self.assertGreater(code, 0)
         with tempfile.TemporaryDirectory(dir=os.environ['TMPDIR']) as temporary:
             manifest = Path(temporary) / 'AndroidManifest.xml'
             manifest.write_text('<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="9.8.7-beta.6" android:versionCode="765"/>', encoding='utf-8')
