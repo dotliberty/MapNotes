@@ -42,7 +42,9 @@ def main():
         assert en[name] and ru[name], "Empty string: " + name
         assert formats(en[name]) == formats(ru[name]), "Format mismatch: " + name
     references = set()
-    for source in (ROOT / "src").rglob("*.java"):
+    for source in (ROOT / "src").rglob("*"):
+        if source.suffix not in {".java", ".kt"}:
+            continue
         content = source.read_text(encoding="utf-8")
         references.update(
             re.findall(r"(?<!android\.)R\s*\.\s*string\s*\.\s*(\w+)", content)

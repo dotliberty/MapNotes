@@ -307,7 +307,7 @@
     <string name="too_many_tiles_move_the_centre_to_a_lower_latitude" formatted="false">"Too many tiles: move the centre to a lower latitude"</string>
     <string name="walk_recording" formatted="false">"Walk recording"</string>
     <string name="mapnotes_walk_in_progress" formatted="false">"MapNotes · walk in progress"</string>
-    <string name="gps_reveals_the_map_tap_stop_to_finish" formatted="false">"GPS reveals the map. Tap “Stop” to finish."</string>
+    <string name="gps_reveals_the_map_tap_stop_to_finish" formatted="false">"Recording your journey. Tap “Stop” to finish."</string>
     <string name="stop" formatted="false">"Stop"</string>
     <string name="finding_precise_gps" formatted="false">"Finding precise GPS…"</string>
     <string name="gps_unavailable_enable_location" formatted="false">"GPS unavailable: enable location"</string>
@@ -334,7 +334,7 @@
     <string name="satellite_progress">"Satellite: %1$d / %2$d · area %3$d×%3$d km"</string>
     <string name="retry_progress">"Waiting for connection · automatic retry %1$d · %2$s"</string>
     <string name="download_complete">"Area %1$d×%1$d km downloaded: %2$s"</string>
-    <string name="walk_accuracy">"Place revealed · accuracy ±%1$d m"</string>
+    <string name="walk_accuracy">"Recording · GPS accuracy ±%1$d m"</string>
     <string name="zoom_in">"Zoom in"</string>
     <string name="zoom_out">"Zoom out"</string>
     <string name="my_location">"My location"</string>

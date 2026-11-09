@@ -5,10 +5,10 @@
 - JDK 21 (the release workflow uses Android Studio JBR).
 - Android SDK platform **35** and build-tools **36.0.0**.
 - Python 3.10+ (`python` below).
-- Gradle **8.9** for the test harness. The harness pins Android Gradle Plugin 8.5.2, Robolectric 4.16.1 and JUnit 4.13.2. A wrapper binary is not bundled: install Gradle explicitly.
+- Gradle **8.9** for the shared application/test build. Pins: Android Gradle Plugin 8.5.2, Kotlin 1.9.23, Google Play services Location 21.3.0, Robolectric 4.16.1 and JUnit 4.13.2. A wrapper binary is not bundled: install Gradle explicitly.
 - Network access for initial Gradle/Maven dependencies and Robolectric Android jars.
 
-Set `JAVA_HOME` to the JDK directory and `ANDROID_HOME` to the Android SDK. Put Gradle 8.9 on `PATH`, or set `GRADLE` to its executable. On Windows use native paths when calling native executables. No Android Studio project import is required for the standalone APK builder.
+Set `JAVA_HOME` to the JDK directory and `ANDROID_HOME` to the Android SDK. Put Gradle 8.9 on `PATH`, or set `GRADLE` to its executable. On Windows use native paths when calling native executables. No Android Studio project import is required. Both the app and tests use the historical `render-tests` module from the root Gradle project; its name does not mean that APKs omit the app or Kotlin code.
 
 ## APK
 
@@ -18,7 +18,9 @@ From the repository root:
 python tools/build.py
 ```
 
-This performs javac (Java 8 bytecode), jar, D8, aapt2 resource compilation/linking, classes.dex packaging and zipalign. The result follows the manifest version, currently `build/MapNotes-1.2.4-unsigned.apk`. **Unsigned APKs are not installable.** Generated files and local signing material are not source files.
+This invokes the common Gradle Java/Kotlin build, resolves pinned Android dependencies, packages all required dex/resources and aligns the unsigned APK. The result follows the manifest version, currently `build/MapNotes-1.3.0-unsigned.apk`. **Unsigned APKs are not installable.** No dependency binaries, generated manifests or local signing material are source files.
+
+For the separate installable debug app, use `python tools/build.py --debug`, followed by `python tools/verify_debug_apk.py build/MapNotes-1.3.0-debug.apk`. The persistent user-local debug keystore must already exist; this workflow will not generate it. Gradle signing is disabled; the helper validates the existing key, then aligns/signs/verifies through the Android SDK tools.
 
 To sign a local build, provide an existing keystore that you own outside the checkout and securely set the `MAPNOTES_STORE_PASSWORD` environment variable. Do not paste passwords into shell history, issue reports or commits. The script passes the password to apksigner by environment reference, not as a command-line value:
 
@@ -45,12 +47,12 @@ python tools/test.py
 Equivalent command:
 
 ```sh
-gradle -p render-tests testDebugUnitTest --rerun-tasks --console=plain
+gradle :render-tests:testDebugUnitTest --rerun-tasks --console=plain
 ```
 
 The Python wrapper deletes stale test-result XML before execution, rejects a failed Gradle process and requires nonempty passing test reports. A targeted run is possible with `--test ru.main.explorer.LanguageTest`.
 
-Robolectric executes **API 34** with a test-harness target SDK of **34**. The distributable APK targets **35**. These tests exercise real JVM code, SQLite and Android/Canvas behavior under Robolectric; they do **not** demonstrate real Camera2 hardware capture, GPS reception, battery behavior or Android 15 foreground/background policy acceptance.
+Robolectric tests explicitly select their simulated SDK (normally **API 34**). The shared manifest and APK target **35**. These tests exercise real Java/Kotlin code, SQLite and Android/Canvas behavior under Robolectric; they do **not** demonstrate real Camera2 capture, activity-recognition accuracy, GPS reception, battery behavior or Android 15 foreground/background policy acceptance.
 
 Public-network probes are opt-in (`MAPNOTES_LIVE_PROBE`, `MAPNOTES_CAPTURED_RESPONSE`); leave both unset for the normal deterministic regression suite. Skipped opt-in probes are not passing live-network checks. A supplied captured response must be public or synthetic data, never a private user's route.
 

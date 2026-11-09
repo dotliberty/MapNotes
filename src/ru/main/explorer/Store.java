@@ -7,7 +7,7 @@ import java.util.*;
 
 public class Store extends SQLiteOpenHelper {
     public Store(Context c) {
-        super(c, "walks.db", null, 3);
+        super(c, "walks.db", null, 4);
     }
 
     public void onCreate(SQLiteDatabase d) {
@@ -15,6 +15,7 @@ public class Store extends SQLiteOpenHelper {
                 "CREATE TABLE points(id INTEGER PRIMARY KEY,lat REAL,lon REAL,acc REAL,t INTEGER,session INTEGER)");
         createPhotos(d);
         createWalks(d);
+        MovementStore.createSchema(d);
     }
 
     private void createPhotos(SQLiteDatabase d) {
@@ -25,6 +26,7 @@ public class Store extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase d, int a, int b) {
         if (a < 2) createPhotos(d);
         if (a < 3) createWalks(d);
+        if (a < 4) MovementStore.createSchema(d);
     }
 
     private void createWalks(SQLiteDatabase d) {
@@ -212,6 +214,29 @@ public class Store extends SQLiteOpenHelper {
         getWritableDatabase().insertOrThrow("points", null, v);
     }
 
+    public void addMovement(
+            android.location.Location l,
+            long session,
+            String type,
+            String source,
+            boolean stopped) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues values = new ContentValues();
+            values.put("lat", l.getLatitude());
+            values.put("lon", l.getLongitude());
+            values.put("acc", l.getAccuracy());
+            values.put("t", l.getTime());
+            values.put("session", session);
+            long id = db.insertOrThrow("points", null, values);
+            MovementStore.insert(db, id, l, type, source, stopped);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     public static final class PointPage {
         public long lastId;
         public final ArrayList<double[]> points = new ArrayList<>();
@@ -231,12 +256,23 @@ public class Store extends SQLiteOpenHelper {
         try (Cursor c =
                 getReadableDatabase()
                         .rawQuery(
-                                "SELECT id,lat,lon,session,t FROM points WHERE id>? ORDER BY id LIMIT ?",
+                                "SELECT p.id,p.lat,p.lon,p.session,p.t,m.type FROM points p LEFT JOIN motion_points m ON p.id=m.point WHERE p.id>? ORDER BY p.id LIMIT ?",
                                 new String[] {"" + id, "" + limit})) {
             while (c.moveToNext()) {
                 page.lastId = c.getLong(0);
+                if (!reveals(c.getString(5))) continue;
                 page.points.add(
-                        new double[] {c.getDouble(1), c.getDouble(2), c.getLong(3), c.getLong(4)});
+                        c.isNull(5)
+                                ? new double[] {
+                                    c.getDouble(1), c.getDouble(2), c.getLong(3), c.getLong(4)
+                                }
+                                : new double[] {
+                                    c.getDouble(1),
+                                    c.getDouble(2),
+                                    c.getLong(3),
+                                    c.getLong(4),
+                                    c.getLong(0)
+                                });
             }
         }
         return page;
@@ -246,10 +282,29 @@ public class Store extends SQLiteOpenHelper {
         ArrayList<double[]> r = new ArrayList<>();
         try (Cursor c =
                 getReadableDatabase()
-                        .rawQuery("SELECT lat,lon,session,t FROM points ORDER BY id", null)) {
-            while (c.moveToNext())
-                r.add(new double[] {c.getDouble(0), c.getDouble(1), c.getLong(2), c.getLong(3)});
+                        .rawQuery(
+                                "SELECT p.lat,p.lon,p.session,p.t,m.type,p.id FROM points p LEFT JOIN motion_points m ON p.id=m.point ORDER BY p.id",
+                                null)) {
+            while (c.moveToNext()) {
+                if (!reveals(c.getString(4))) continue;
+                r.add(
+                        c.isNull(4)
+                                ? new double[] {
+                                    c.getDouble(0), c.getDouble(1), c.getLong(2), c.getLong(3)
+                                }
+                                : new double[] {
+                                    c.getDouble(0),
+                                    c.getDouble(1),
+                                    c.getLong(2),
+                                    c.getLong(3),
+                                    c.getLong(5)
+                                });
+            }
         }
         return r;
+    }
+
+    private static boolean reveals(String type) {
+        return type == null || "WALK".equals(type) || "RUN".equals(type) || "ON_FOOT".equals(type);
     }
 }

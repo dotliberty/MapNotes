@@ -379,7 +379,7 @@ public class MainActivity extends Activity implements android.location.LocationL
                 () -> {
                     ArrayList<double[]> route = store.walkPoints(w.id);
                     ArrayList<Store.Photo> photos = store.walkPhotos(w, System.currentTimeMillis());
-                    double km = Store.distance(route) / 1000;
+                    double km = MovementStore.totalDistance(this, w.id) / 1000;
                     long seconds = w.elapsed(System.currentTimeMillis()) / 1000;
                     handler.post(
                             () -> {
@@ -403,6 +403,14 @@ public class MainActivity extends Activity implements android.location.LocationL
                                                 15,
                                                 Color.WHITE);
                                 body.addView(summary);
+                                Button movement = button(getString(R.string.motion_title));
+                                body.addView(movement);
+                                movement.setOnClickListener(
+                                        v ->
+                                                startActivityForResult(
+                                                        new Intent(this, MovementActivity.class)
+                                                                .putExtra("walk", w.id),
+                                                        130));
                                 Button place =
                                         button(
                                                 Language.text(
@@ -591,8 +599,9 @@ public class MainActivity extends Activity implements android.location.LocationL
                                                         previous[1],
                                                         point[0],
                                                         point[1]);
-                                        if (meters / ((point[3] - previous[3]) / 1000.0) <= 4.5)
-                                            walkedDistance += meters;
+                                        if ((point.length >= 5 && previous.length >= 5)
+                                                || meters / ((point[3] - previous[3]) / 1000.0)
+                                                        <= 4.5) walkedDistance += meters;
                                     }
                                 }
                                 loadedPoints.add(point);
@@ -694,6 +703,31 @@ public class MainActivity extends Activity implements android.location.LocationL
             foregroundSession = System.currentTimeMillis();
             liveFilter = new GpsFilter();
         }
+        if (WalkService.running) {
+            long liveAge = SystemClock.elapsedRealtimeNanos() - l.getElapsedRealtimeNanos();
+            if (l.hasAccuracy()
+                    && l.getAccuracy() > 0
+                    && l.getAccuracy() <= 30
+                    && !l.isFromMockProvider()
+                    && liveAge >= 0
+                    && liveAge <= 15000000000L
+                    && Double.isFinite(l.getLatitude())
+                    && Double.isFinite(l.getLongitude())
+                    && Math.abs(l.getLatitude()) <= 85.05112878
+                    && Math.abs(l.getLongitude()) <= 180) {
+                lastDisplay = new android.location.Location(l);
+                map.setCurrent(l, false);
+                liveStatus =
+                        getString(
+                                R.string.motion_live,
+                                MovementActivity.label(
+                                        this,
+                                        MotionRuntime.type(
+                                                this, l.hasSpeed() ? l.getSpeed() : Double.NaN)));
+                refresh();
+            }
+            return;
+        }
         if (!l.hasAccuracy() || l.isFromMockProvider() || (l.hasSpeed() && l.getSpeed() > 4.5f))
             return;
         long age = SystemClock.elapsedRealtimeNanos() - l.getElapsedRealtimeNanos();
@@ -787,7 +821,8 @@ public class MainActivity extends Activity implements android.location.LocationL
             Language.text(this, R.string.map_sources),
             Language.text(this, R.string.disconnect_map),
             Language.text(this, "language"),
-            Language.text(this, "imagery_title")
+            Language.text(this, "imagery_title"),
+            getString(R.string.motion_title)
         };
         new AtlasUi.DialogBuilder(this, anchor)
                 .setTitle(Language.text(this, "map_menu"))
@@ -806,6 +841,9 @@ public class MainActivity extends Activity implements android.location.LocationL
                             else if (w == 6) MapImport.catalog(this);
                             else if (w == 7) map.disconnectWorld();
                             else if (w == 8) Language.show(this);
+                            else if (w == 10)
+                                startActivityForResult(
+                                        new Intent(this, MovementActivity.class), 130);
                             else if (w == 9)
                                 startActivity(
                                         new Intent(this, ImageryTraceActivity.class)
@@ -892,6 +930,10 @@ public class MainActivity extends Activity implements android.location.LocationL
 
     protected void onActivityResult(int r, int result, Intent data) {
         super.onActivityResult(r, result, data);
+        if (r == 130) {
+            recreate(); // Reload exploration after an explicit historical movement correction.
+            return;
+        }
         if (r == 11 && result == RESULT_OK && data != null) {
             android.net.Uri uri = data.getData();
             if (uri == null) return;

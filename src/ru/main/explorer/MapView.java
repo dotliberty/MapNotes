@@ -1024,6 +1024,7 @@ public class MapView extends View {
         return a.length >= 4
                 && b.length >= 4
                 && a[2] == b[2]
+                && (a.length < 5 || b.length < 5 || b[4] == a[4] + 1)
                 && b[3] >= a[3]
                 && b[3] - a[3] <= 30000
                 && GpsFilter.distance(a[0], a[1], b[0], b[1]) <= 150;

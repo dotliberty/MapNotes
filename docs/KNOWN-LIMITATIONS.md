@@ -4,7 +4,7 @@
 
 The repository includes pure geometry/GPS checks and Android/Robolectric regressions for SQLite migration and persistence, walk/session boundaries, photos and notes, gallery-export logic, map downloads and continuation, local HTTP handling, vector/raster map rendering, bounded photo layout, dense-map detail, camera UI/orientation calculations and language selection. Test output is evidence for those exercised code paths, not for untested hardware.
 
-Existing route/photo storage remains SQLite schema v3; this release does not intentionally migrate or delete routes, originals or notes. Tests cover migrations from older schemas and preservation of test records. Same-certificate APK verification demonstrates signing compatibility, not a completed real-user installation.
+Version 1.3 migrates SQLite v3 to v4 additively for movement metadata and confirmed personal samples; routes, originals, notes and IDs are not intentionally deleted. Tests cover migration and preservation of disposable test records, not an actual private user database. Same-certificate APK verification demonstrates signing compatibility, not a completed real-user installation. Activity-recognition timing, personalization accuracy and battery behavior remain experimental and require phone testing; see [1.3 verification](1.3-VERIFICATION.md).
 
 ## Not verified on a physical phone for this release
 

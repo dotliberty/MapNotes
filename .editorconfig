@@ -18,3 +18,7 @@ max_line_length = 100
 [*.py]
 # Black 26.10.1.
 max_line_length = 88
+
+[*.kt]
+# ktfmt 0.53, Kotlin language style.
+max_line_length = 100

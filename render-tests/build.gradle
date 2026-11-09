@@ -1,6 +1,24 @@
 plugins {
     id 'com.android.application' version '8.5.2'
+    id 'org.jetbrains.kotlin.android' version '1.9.23'
 }
+
+// Keep the historical standalone invocation working as well as the root build.
+def sourceRoot = projectDir.parentFile
+def originalManifest = new XmlParser(false, false).parse(new File(sourceRoot, 'AndroidManifest.xml'))
+def manifestVersion = originalManifest.attribute('android:versionName')
+def manifestCode = originalManifest.attribute('android:versionCode').toInteger()
+def manifestTarget = originalManifest.'uses-sdk'[0].attribute('android:targetSdkVersion').toInteger()
+def generatedManifest = layout.buildDirectory.file('generated/mapnotes/AndroidManifest.xml').get().asFile
+// AGP owns namespace/applicationId; never edit the authored manifest or keys.
+originalManifest.attributes().remove('package')
+generatedManifest.parentFile.mkdirs()
+generatedManifest.text = groovy.xml.XmlUtil.serialize(originalManifest)
+def debugManifest = layout.buildDirectory.file('generated/mapnotes/debug/AndroidManifest.xml').get().asFile
+debugManifest.parentFile.mkdirs()
+debugManifest.text = '<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">' +
+    '<application android:label="MapNotes beta DEBUG" tools:replace="android:label" />' +
+    '</manifest>'
 
 android {
     namespace 'ru.main.explorer'
@@ -9,12 +27,32 @@ android {
     defaultConfig {
         applicationId 'ru.main.explorer'
         minSdk 26
-        targetSdk 34
+        targetSdk manifestTarget
+        versionName manifestVersion
+        versionCode manifestCode
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            signingConfig null
+        }
+        release {
+            signingConfig null
+            minifyEnabled false
+        }
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
     }
 
     sourceSets {
+        debug {
+            manifest.srcFile debugManifest
+        }
         main {
-            manifest.srcFile '../AndroidManifest.xml'
+            manifest.srcFile generatedManifest
             java.srcDirs = ['../src']
             assets.srcDirs = ['../assets']
             res.srcDirs = ['../res']
@@ -32,6 +70,9 @@ android {
 }
 
 dependencies {
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.23'
+    // Optional runtime recognition signal; recording must also work without Google services.
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.16.1'
 }

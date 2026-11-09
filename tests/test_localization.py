@@ -10,9 +10,11 @@ TOKEN = re.compile(r"%(?:(\d+)\$)?([-#+ 0,(<]*)(\d*)(?:\.(\d+))?([a-zA-Z%])")
 
 
 def resources(folder):
-    entries = (
-        ET.parse(ROOT / "res" / folder / "strings.xml").getroot().findall("string")
-    )
+    entries = [
+        entry
+        for path in sorted((ROOT / "res" / folder).glob("*.xml"))
+        for entry in ET.parse(path).getroot().findall("string")
+    ]
     names = [e.attrib["name"] for e in entries]
     if len(names) != len(set(names)):
         raise AssertionError("Duplicate resource IDs")
@@ -32,6 +34,11 @@ def signature(value):
 
 
 class LocalizationResources(unittest.TestCase):
+    def test_split_motion_and_imagery_resources_are_included(self):
+        for folder in ("values", "values-ru"):
+            self.assertIn("motion_title", resources(folder))
+            self.assertIn("imagery_title", resources(folder))
+
     def test_exhaustive_parity_and_format_signatures(self):
         en, ru = resources("values"), resources("values-ru")
         self.assertGreater(len(en), 300)
@@ -47,10 +54,12 @@ class LocalizationResources(unittest.TestCase):
     def test_all_source_resource_references_exist(self):
         en = resources("values")
         checked = 0
-        for source in (ROOT / "src").rglob("*.java"):
+        for source in (ROOT / "src").rglob("*"):
+            if source.suffix not in {".java", ".kt"}:
+                continue
             text = source.read_text(encoding="utf-8")
             for key in re.findall(
-                r'R\s*\.\s*string\s*\.\s*(\w+)|Messages\s*\.\s*(?:text|format)\s*\(\s*"([^"]+)"',
+                r'(?<!android\.)R\s*\.\s*string\s*\.\s*(\w+)|Messages\s*\.\s*(?:text|format)\s*\(\s*"([^"]+)"',
                 text,
             ):
                 self.assertIn(key[0] or key[1], en, str(source))

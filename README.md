@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/dotliberty/MapNotes/releases/tag/v1.2.4">Download 1.2.4</a> ·
+  <a href="https://github.com/dotliberty/MapNotes/releases/tag/v1.3.0">Download 1.3.0</a> ·
   <a href="#your-first-walk">Get started</a> ·
-  <a href="docs/1.2.4-RELEASE.md">Release notes</a> ·
+  <a href="docs/1.3-RELEASE.md">Release notes</a> ·
   <a href="README.ru.md">Русский</a>
 </p>
 
@@ -30,6 +30,7 @@ It is a walking journal, not a route planner or turn-by-turn navigation app. The
 
 - **See your exploration grow.** Reveal areas along your walks, with a maximum 100 m radius and approximate building-wall occlusion. Zoom and move around the map with continuous transitions.
 - **Keep a walk history.** Start, finish or resume a walk; review its route, elapsed time and associated photos. Recording uses a visible foreground-service notification.
+- **Record mixed journeys.** Walking, running and transport can share one recording. Open **Map menu → Movement** for Auto/manual mode, per-type statistics, interval corrections and explicitly confirmed personal learning. Transport is recorded without revealing exploration. Auto requires available Google Play services and activity permission; otherwise use manual mode.
 - **Photograph a place, not just a moment.** Use the built-in camera, select supported lenses/photo sizes and adjust zoom where the device allows it. Open a photo from the map and add a note.
 - **Keep originals private.** Photos stay inside MapNotes unless you choose **Save to gallery**, which creates a separate copy.
 - **Take available maps offline.** Download an atlas region or connect a compatible local `.mbtiles` file. Regional downloads support pause and continuation.
@@ -56,8 +57,8 @@ These are **native Canvas renders of the application in Robolectric**, not scree
 
 ## Install or update
 
-1. Open the [1.2.4 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.2.4).
-2. Download **`MapNotes-1.2.4.apk`**. `SHA256SUMS` is available alongside it for checking the download's integrity.
+1. Open the [1.3.0 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.3.0).
+2. Download **`MapNotes-1.3.0.apk`**. `SHA256SUMS` is available alongside it for checking the download's integrity.
 3. Open the APK on your Android device and allow installation from your browser/file manager if prompted.
 
 **Already using the official MapNotes app? Install the new APK over it. Do not uninstall the app or clear its storage.** The official release keeps the same package and signing certificate. An APK with `-debug` in its name is a separate test app, not an update to the official installation.
@@ -103,9 +104,9 @@ Routes, original photos and notes are stored on the device. MapNotes does not im
 
 ## Status and limitations
 
-1.2.4 introduces the illustrated interface, redesigned camera controls, camera-switch safety fixes and readable, consistently formatted source code.
+1.3.0 adds mixed journeys, dynamic walking/running observations, manual corrections and a local personal profile. New logic uses Kotlin alongside the existing Java app. Activity recognition and personalization remain experimental in accuracy; stable distribution is not a claim of completed hardware acceptance. The illustrated interface and camera fixes from 1.2.4 remain.
 
-The release verification run completed **256 Android/JVM tests**, with **3 external-data checks skipped** and no failures. Formatting, resource, geometry, metadata and signing checks also passed. These are local software checks, **not a claim of physical-device camera/GPS acceptance or guaranteed frame rate**.
+The release verification run completed **298 Android/JVM tests**, with **3 external-data checks skipped** and no failures. Formatting, resource, geometry, metadata and signing checks also passed. These are local software checks, **not a claim of physical-device activity-recognition/camera/GPS acceptance, battery measurements or guaranteed frame rate**.
 
 - GPS accuracy and background recording depend on reception, Android and the device vendor.
 - Lens selection, zoom, photo sizes and camera light depend on advertised hardware support.
@@ -117,11 +118,11 @@ If something goes wrong, describe your Android/device model, app version and the
 
 ## Build, test and contribute
 
-The app uses Java and Android platform APIs. The separate test harness uses Gradle/Robolectric. Follow the build guide for the toolchain, APK packaging and signing instructions.
+The app uses Java/Kotlin and Android APIs, with one Gradle application/test configuration and Robolectric tests. Follow the build guide for the toolchain, APK packaging and signing instructions.
 
 - [Build and test](docs/BUILDING.md)
 - [Code style and formatting checks](docs/FORMATTING.md)
-- [1.2.4 release notes](docs/1.2.4-RELEASE.md)
+- [1.3.0 release notes](docs/1.3-RELEASE.md) and [movement implementation/verification](docs/1.3-VERIFICATION.md)
 - [UI verification](docs/1.2.4-DESIGN.md) and [camera-switch regressions](docs/1.2.4-CAMERA-SAFETY.md)
 - [Experimental imagery-assisted tracing](docs/IMAGERY-TRACE.md) — separate beta feature; its earlier version notes are historical.
 

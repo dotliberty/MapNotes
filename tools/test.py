@@ -28,8 +28,8 @@ def main():
     command = [
         args.gradle,
         "-p",
-        str(ROOT / "render-tests"),
-        "testDebugUnitTest",
+        str(ROOT),
+        ":render-tests:testDebugUnitTest",
         "--rerun-tasks",
         "--console=plain",
     ]

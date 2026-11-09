@@ -451,7 +451,8 @@ public class LocalizationUiTest {
             long walk;
             try (Store s = new Store(app)) {
                 walk = s.openWalk().id;
-                assertEquals(1, s.points().size());
+                assertEquals(1, s.walkPoints(walk).size());
+                assertEquals(0, s.points().size()); // Unknown activity must not reveal exploration.
             }
             NotificationManager manager =
                     (NotificationManager) app.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -469,7 +470,8 @@ public class LocalizationUiTest {
                     WalkService.currentStatus(app));
             try (Store s = new Store(app)) {
                 assertEquals(walk, s.openWalk().id);
-                assertEquals(1, s.points().size());
+                assertEquals(1, s.walkPoints(walk).size());
+                assertEquals(0, s.points().size());
             }
             service.onStartCommand(new Intent(app, WalkService.class).setAction("STOP"), 0, 2);
             Language.select(app, language);

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="motion_title">Movement</string>
+    <string name="motion_mode_title">Recording mode</string>
+    <string name="motion_more">Show more segments</string>
+    <string name="motion_interval">Points %1$d — %2$d</string>
+    <string name="motion_interval_start">First point to correct</string>
+    <string name="motion_interval_end">Last point to correct</string>
+    <string name="motion_auto">Automatic</string>
+    <string name="motion_walk">Walking</string>
+    <string name="motion_run">Running</string>
+    <string name="motion_vehicle">Transport</string>
+    <string name="motion_unknown">Not determined</string>
+    <string name="motion_foot">On foot · subtype unknown</string>
+    <string name="motion_enable">Allow activity recognition</string>
+    <string name="motion_available">Recognition is available; it starts only during recording. Hardware accuracy has not been verified.</string>
+    <string name="motion_unavailable">Automatic recognition unavailable. Recording and manual selection still work.</string>
+    <string name="motion_start_hint">Start a recording from the map. Movement mode does not automatically start recording.</string>
+    <string name="motion_mode">Recording mode: %1$s</string>
+    <string name="motion_live">Current classification: %1$s</string>
+    <string name="motion_history">Choose a recorded journey</string>
+    <string name="motion_summary">%1$s: %2$.2f km · moving %3$d s · stopped %4$d s</string>
+    <string name="motion_segment">%1$s · %2$.2f km · %3$d s · %4$s</string>
+    <string name="motion_auto_source">automatic</string>
+    <string name="motion_manual_source">manual</string>
+    <string name="motion_legacy">legacy / unclassified</string>
+    <string name="motion_correct">Correct this segment</string>
+    <string name="motion_confirm">Confirm segment for personal profile</string>
+    <string name="motion_confirmed">Confirmed sample saved locally.</string>
+    <string name="motion_sample_rejected">Not a suitable training sample: requires a continuous walking/running segment of at least 60 s, several moving points and accuracy within 20 m.</string>
+    <string name="motion_profile">Profile: %1$d walking / %2$d running samples. %3$s</string>
+    <string name="motion_ready">Ready for ambiguous on-foot observations</string>
+    <string name="motion_learning">Needs at least 3 independent confirmed journeys of each type; one sample per journey and type</string>
+    <string name="motion_profile_toggle">Personal adaptation: %1$s</string>
+    <string name="motion_on">on</string>
+    <string name="motion_off">off</string>
+    <string name="motion_reset">Reset personal profile</string>
+    <string name="motion_reset_question">Delete confirmed training samples? Routes, photos and notes remain.</string>
+    <string name="motion_undo">Undo last correction</string>
+    <string name="motion_map_notice">Route schematic, not a basemap. Transport does not reveal the exploration map.</string>
+    <string name="motion_empty">No recorded points yet.</string>
+    <string name="motion_error">Could not read or save movement data.</string>
+    <string name="motion_help">Select a segment to correct its type or explicitly confirm it for learning. Manual recording alone does not train the profile. Corrections affect future profile suggestions, not unrelated old routes.</string>
+</resources>

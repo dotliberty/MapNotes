@@ -52,7 +52,10 @@ public class Design12Test {
             assertTrue("Useful map width", map.getWidth() >= 180);
             a.menu();
             AlertDialog menu = ShadowAlertDialog.getLatestAlertDialog();
-            assertEquals(10, menu.getListView().getAdapter().getCount());
+            assertEquals(11, menu.getListView().getAdapter().getCount());
+            assertEquals(
+                    a.getString(R.string.motion_title),
+                    menu.getListView().getAdapter().getItem(10));
             assertTrue(
                     menu.getWindow().getDecorView().getBackground()
                             instanceof android.graphics.drawable.GradientDrawable);

@@ -38,6 +38,11 @@ def debug_keystore():
 def build():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--gradle",
+        default=os.environ.get("GRADLE") or shutil.which("gradle"),
+        help="Gradle 8.9 executable (or set GRADLE)",
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Separate .debug application using existing ~/.android/debug.keystore; never creates keys or reads release credentials",
@@ -105,89 +110,27 @@ def build():
         )
     output = ROOT / "build"
     output.mkdir(exist_ok=True)
-    work = output / "sdk-build"
-    if work.exists():
-        shutil.rmtree(work)
-    classes, dex = work / "classes", work / "dex"
-    classes.mkdir(parents=True)
-    dex.mkdir()
-    android = sdk / "platforms/android-35/android.jar"
-    generated = work / "generated"
-    generated.mkdir()
-    resources = work / "resources.zip"
-    unsigned = work / "unsigned.apk"
-    manifest_path = ROOT / "AndroidManifest.xml"
-    if args.debug:
-        package = manifest.get("package")
-        application = manifest.find("application")
-        if not package or application is None:
-            parser.error("Manifest must contain package and application")
-        for component in manifest.findall("./application/*"):
-            name = component.get(ANDROID + "name", "")
-            if name.startswith("."):
-                component.set(ANDROID + "name", package + name)
-        manifest.set("package", package + ".debug")
-        application.set(ANDROID + "debuggable", "true")
-        application.set(ANDROID + "label", "MapNotes beta DEBUG")
-        manifest_path = work / "AndroidManifest.xml"
-        ET.register_namespace("android", ANDROID[1:-1])
-        ET.ElementTree(manifest).write(
-            manifest_path, encoding="utf-8", xml_declaration=True
-        )
-    run([bt / ("aapt2" + exe), "compile", "--dir", ROOT / "res", "-o", resources])
+    gradle = args.gradle
+    if not gradle:
+        parser.error("Install Gradle 8.9 and put it on PATH, or set GRADLE")
+    variant = "debug" if args.debug else "release"
     run(
         [
-            bt / ("aapt2" + exe),
-            "link",
-            "-o",
-            unsigned,
-            "--manifest",
-            manifest_path,
-            "-I",
-            android,
-            "-A",
-            ROOT / "assets",
-            "--java",
-            generated,
-            "--custom-package",
-            "ru.main.explorer",
-            resources,
+            gradle,
+            "-p",
+            ROOT,
+            ":render-tests:assemble" + variant.capitalize(),
+            "--console=plain",
         ]
     )
-    run(
-        [
-            java / ("javac" + exe),
-            "-encoding",
-            "UTF-8",
-            "--release",
-            "8",
-            "-classpath",
-            android,
-            "-d",
-            classes,
-            *sorted((ROOT / "src").rglob("*.java")),
-            *sorted(generated.rglob("*.java")),
-        ]
+    unsigned = (
+        ROOT
+        / "render-tests/build/outputs/apk"
+        / variant
+        / ("render-tests-" + variant + "-unsigned.apk")
     )
-    jar = work / "classes.jar"
-    run([java / ("jar" + exe), "cf", jar, "-C", classes, "."])
-    run(
-        [
-            java / ("java" + exe),
-            "-cp",
-            bt / "lib/d8.jar",
-            "com.android.tools.r8.D8",
-            "--lib",
-            android,
-            "--min-api",
-            "26",
-            "--output",
-            dex,
-            jar,
-        ]
-    )
-
-    run([bt / ("aapt" + exe), "add", unsigned, "classes.dex"], cwd=dex)
+    if not unsigned.is_file():
+        raise RuntimeError(f"Gradle unsigned APK missing: {unsigned}")
     aligned = output / ("MapNotes-" + version + "-unsigned.apk")
     run([bt / ("zipalign" + exe), "-f", "4", unsigned, aligned])
     signer = [java / ("java" + exe), "-jar", bt / "lib/apksigner.jar"]

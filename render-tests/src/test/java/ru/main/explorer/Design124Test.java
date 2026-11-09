@@ -170,7 +170,10 @@ public class Design124Test {
             assertTrue(map.getHeight() >= 250);
             a.menu();
             AlertDialog menu = ShadowAlertDialog.getLatestAlertDialog();
-            assertEquals(10, menu.getListView().getAdapter().getCount());
+            assertEquals(11, menu.getListView().getAdapter().getCount());
+            assertEquals(
+                    a.getString(R.string.motion_title),
+                    menu.getListView().getAdapter().getItem(10));
             save(menu.getWindow().getDecorView(), "menu", 408, 720);
             menu.dismiss();
             Store store = (Store) get(a, MainActivity.class, "store");

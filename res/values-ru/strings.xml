@@ -307,7 +307,7 @@
     <string name="too_many_tiles_move_the_centre_to_a_lower_latitude" formatted="false">"Слишком много фрагментов: сдвинь центр к меньшей широте"</string>
     <string name="walk_recording" formatted="false">"Запись прогулки"</string>
     <string name="mapnotes_walk_in_progress" formatted="false">"MapNotes · прогулка идёт"</string>
-    <string name="gps_reveals_the_map_tap_stop_to_finish" formatted="false">"GPS раскрывает карту. Нажми «Стоп», чтобы завершить."</string>
+    <string name="gps_reveals_the_map_tap_stop_to_finish" formatted="false">"Идёт запись путешествия. Нажми «Стоп», чтобы завершить."</string>
     <string name="stop" formatted="false">"Стоп"</string>
     <string name="finding_precise_gps" formatted="false">"Ищем точный GPS…"</string>
     <string name="gps_unavailable_enable_location" formatted="false">"GPS недоступен: включи геолокацию"</string>
@@ -334,7 +334,7 @@
     <string name="satellite_progress">"Спутник: %1$d / %2$d · область %3$d×%3$d км"</string>
     <string name="retry_progress">"Ожидаем связь · автоповтор %1$d · %2$s"</string>
     <string name="download_complete">"Область %1$d×%1$d км скачана: %2$s"</string>
-    <string name="walk_accuracy">"Место открыто · точность ±%1$d м"</string>
+    <string name="walk_accuracy">"Запись · точность GPS ±%1$d м"</string>
     <string name="zoom_in">"Приблизить"</string>
     <string name="zoom_out">"Отдалить"</string>
     <string name="my_location">"Моё местоположение"</string>

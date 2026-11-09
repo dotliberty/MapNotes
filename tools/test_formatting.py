@@ -41,6 +41,16 @@ class FormattingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             format_code.gradle_text("plugins {\n id 'example'\n}\n")
 
+    def test_gradle_continuations_do_not_confuse_commas_between_string_arguments(self):
+        text = "title = 'one' +\n    'two'\ntasks {\n    flag 'key', 'value'\n}\n"
+        self.assertEqual(text, format_code.gradle_text(text))
+
+    def test_kotlin_is_in_source_formatting_scope(self):
+        self.assertIn(".kt", format_code.CODE_SUFFIXES)
+        self.assertTrue(
+            any(path.suffix == ".kt" for path in format_code.source_files())
+        )
+
     def test_resource_reference_audit_accepts_java_line_breaks(self):
         references = re.findall(
             r"(?<!android\.)R\s*\.\s*string\s*\.\s*(\w+)",

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="motion_title">Движение</string>
+    <string name="motion_mode_title">Режим записи</string>
+    <string name="motion_more">Показать ещё участки</string>
+    <string name="motion_interval">Точки %1$d — %2$d</string>
+    <string name="motion_interval_start">Первая точка исправления</string>
+    <string name="motion_interval_end">Последняя точка исправления</string>
+    <string name="motion_auto">Автоматически</string>
+    <string name="motion_walk">Ходьба</string>
+    <string name="motion_run">Бег</string>
+    <string name="motion_vehicle">Транспорт</string>
+    <string name="motion_unknown">Не определено</string>
+    <string name="motion_foot">Пешком · тип не уточнён</string>
+    <string name="motion_enable">Разрешить распознавание активности</string>
+    <string name="motion_available">Распознавание доступно и запускается только во время записи. Аппаратная точность ещё не проверена.</string>
+    <string name="motion_unavailable">Автоопределение недоступно. Запись и ручной выбор продолжают работать.</string>
+    <string name="motion_start_hint">Начни запись с карты. Выбор режима движения не начинает запись автоматически.</string>
+    <string name="motion_mode">Режим записи: %1$s</string>
+    <string name="motion_live">Текущее определение: %1$s</string>
+    <string name="motion_history">Выбрать записанное путешествие</string>
+    <string name="motion_summary">%1$s: %2$.2f км · движение %3$d с · остановки %4$d с</string>
+    <string name="motion_segment">%1$s · %2$.2f км · %3$d с · %4$s</string>
+    <string name="motion_auto_source">автоматически</string>
+    <string name="motion_manual_source">вручную</string>
+    <string name="motion_legacy">историческое / не определено</string>
+    <string name="motion_correct">Исправить этот участок</string>
+    <string name="motion_confirm">Подтвердить участок для личного профиля</string>
+    <string name="motion_confirmed">Подтверждённый пример сохранён локально.</string>
+    <string name="motion_sample_rejected">Пример не подходит: нужен непрерывный участок ходьбы/бега от 60 с, несколько точек движения и точность до 20 м.</string>
+    <string name="motion_profile">Профиль: %1$d участков ходьбы / %2$d бега. %3$s</string>
+    <string name="motion_ready">Готов для неоднозначных пеших наблюдений</string>
+    <string name="motion_learning">Нужно хотя бы по 3 подтверждённые записи каждого типа; один пример на запись и тип</string>
+    <string name="motion_profile_toggle">Персональная подстройка: %1$s</string>
+    <string name="motion_on">вкл.</string>
+    <string name="motion_off">выкл.</string>
+    <string name="motion_reset">Сбросить личный профиль</string>
+    <string name="motion_reset_question">Удалить подтверждённые обучающие примеры? Маршруты, фотографии и заметки останутся.</string>
+    <string name="motion_undo">Отменить последнее исправление</string>
+    <string name="motion_map_notice">Схема маршрута, не подложка карты. Транспорт не раскрывает карту исследования.</string>
+    <string name="motion_empty">Записанных точек пока нет.</string>
+    <string name="motion_error">Не удалось прочитать или сохранить данные движения.</string>
+    <string name="motion_help">Выбери участок, чтобы исправить его тип или явно подтвердить для обучения. Ручной режим записи сам по себе не обучает профиль. Исправления влияют на будущие подсказки профиля, а не на посторонние старые маршруты.</string>
+</resources>

@@ -12,7 +12,8 @@ public class WalkService extends Service implements LocationListener {
     private static volatile StatusText statusText = new StatusText("start_hint");
     private LocationManager manager;
     private Store store;
-    private GpsFilter filter;
+    private TripGpsFilter filter;
+    private long walkId;
     private long session;
     private boolean foreground;
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -38,7 +39,8 @@ public class WalkService extends Service implements LocationListener {
         getSharedPreferences(Language.PREFS, 0)
                 .registerOnSharedPreferenceChangeListener(languageChanged);
         store = new Store(this);
-        filter = new GpsFilter();
+        filter = new TripGpsFilter();
+        MotionRuntime.reset(this);
         session = System.currentTimeMillis();
         manager = (LocationManager) getSystemService(LOCATION_SERVICE);
     }
@@ -101,8 +103,10 @@ public class WalkService extends Service implements LocationListener {
         else startForeground(1, notification);
         try {
             manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
-            session = store.newWalkSession(store.startWalk(System.currentTimeMillis()));
+            walkId = store.startWalk(System.currentTimeMillis());
+            session = store.newWalkSession(walkId);
             running = true;
+            MotionRuntime.start(this);
             setStatus("finding_precise_gps");
         } catch (Exception e) {
             setStatus("gps_unavailable_enable_location");
@@ -117,22 +121,19 @@ public class WalkService extends Service implements LocationListener {
             setStatus("gps_accuracy_unavailable");
             return;
         }
-        if (l.hasSpeed() && l.getSpeed() > 4.5f) {
-            setStatus("speed_too_high_for_a_walk");
-            return;
-        }
-        String why =
-                filter.accept(
-                        new GpsFilter.Fix(
-                                l.getLatitude(),
-                                l.getLongitude(),
-                                l.getAccuracy(),
-                                l.getElapsedRealtimeNanos(),
-                                l.isFromMockProvider()),
-                        SystemClock.elapsedRealtimeNanos());
+        String why = filter.accept(l, SystemClock.elapsedRealtimeNanos());
         if (why == null) {
             try {
-                store.add(l, session);
+                if (filter.getBreakSegment()) session = store.newWalkSession(walkId);
+                String type =
+                        MotionRuntime.type(this, l.hasSpeed() ? l.getSpeed() : Double.NaN).name();
+                boolean stopped =
+                        (MotionRuntime.stopped() && (!l.hasSpeed() || l.getSpeed() < 1f))
+                                || (l.hasSpeed()
+                                        && l.hasSpeedAccuracy()
+                                        && l.getSpeedAccuracyMetersPerSecond() <= .5f
+                                        && l.getSpeed() <= .3f);
+                store.addMovement(l, session, type, MotionRuntime.source(), stopped);
                 setStatus("walk_accuracy", Math.round(l.getAccuracy()));
             } catch (Exception e) {
                 setStatus("could_not_save_location");
@@ -166,6 +167,7 @@ public class WalkService extends Service implements LocationListener {
 
     public void onDestroy() {
         foreground = false;
+        MotionRuntime.stop(this);
         getSharedPreferences(Language.PREFS, 0)
                 .unregisterOnSharedPreferenceChangeListener(languageChanged);
         ui.removeCallbacksAndMessages(null);

@@ -7,6 +7,7 @@ Pass --check for a read-only release gate; dependencies are never downloaded her
 from pathlib import Path
 import argparse
 import importlib
+import hashlib
 import os
 import re
 import subprocess
@@ -17,7 +18,8 @@ from xml.sax.saxutils import quoteattr
 ROOT = Path(__file__).resolve().parents[1]
 JAVA_VERSION = "1.24.0"
 BLACK_VERSION = "26.10.1"
-CODE_SUFFIXES = {".java", ".py", ".xml", ".gradle"}
+CODE_SUFFIXES = {".java", ".kt", ".py", ".xml", ".gradle"}
+KTFMT_SHA256 = "76d05c614fe1864788557170fe89410f75134866a9f84011f9bd570ca12526b1"
 
 
 def source_files():
@@ -35,7 +37,7 @@ def source_files():
             and Path(name).suffix in CODE_SUFFIXES
             and (ROOT / name).is_file()
             and (
-                name == "AndroidManifest.xml"
+                name in {"AndroidManifest.xml", "build.gradle", "settings.gradle"}
                 or name.split("/")[0]
                 in {"src", "tests", "tools", "res", "render-tests"}
             )
@@ -106,12 +108,15 @@ def xml_text(text):
 def gradle_text(text):
     """Validate the small authored Gradle files; never rewrite Groovy syntax."""
     depth = 0
+    continuation = False
     lines = text.splitlines()
     for number, line in enumerate(lines, 1):
         stripped = line.strip()
         if not stripped:
             continue
-        expected = depth - (1 if stripped.startswith("}") else 0)
+        expected = (
+            depth - (1 if stripped.startswith("}") else 0) + (1 if continuation else 0)
+        )
         if line[: len(line) - len(line.lstrip())] != "    " * expected:
             raise ValueError(f"Gradle indentation on line {number}")
         if stripped.startswith("//"):
@@ -120,6 +125,7 @@ def gradle_text(text):
         if ";" in code:
             raise ValueError(f"Put each Gradle statement on its own line: {number}")
         depth += code.count("{") - code.count("}")
+        continuation = stripped.endswith(("+", ","))
         if depth < 0:
             raise ValueError(f"Unbalanced Gradle block on line {number}")
     if depth:
@@ -132,6 +138,7 @@ def main():
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--java-formatter", type=Path, required=True)
     parser.add_argument("--black-path", type=Path)
+    parser.add_argument("--kotlin-formatter", type=Path)
     args = parser.parse_args()
     if args.black_path:
         sys.path.insert(0, str(args.black_path))
@@ -169,10 +176,39 @@ def main():
     if result.returncode not in {0, 1}:
         raise SystemExit(result.returncode)
     changed = result.returncode != 0
-    counts = {"java": len(java_files), "python": 0, "xml": 0, "gradle": 0}
+    kotlin_files = [p for p in files if p.suffix == ".kt"]
+    if kotlin_files:
+        formatter = args.kotlin_formatter
+        if formatter is None or not formatter.is_file():
+            parser.error("Pass --kotlin-formatter with the pinned ktfmt 0.53 JAR")
+        if hashlib.sha256(formatter.read_bytes()).hexdigest() != KTFMT_SHA256:
+            parser.error("ktfmt 0.53 SHA256 mismatch")
+        kotlin_flags = ["--kotlinlang-style"]
+        if args.check:
+            kotlin_flags += ["--dry-run", "--set-exit-if-changed"]
+        kotlin_result = subprocess.run(
+            [
+                java,
+                "-jar",
+                str(formatter.resolve()),
+                *kotlin_flags,
+                *map(str, kotlin_files),
+            ],
+            cwd=ROOT,
+        )
+        if kotlin_result.returncode not in {0, 1}:
+            raise SystemExit(kotlin_result.returncode)
+        changed |= kotlin_result.returncode != 0
+    counts = {
+        "java": len(java_files),
+        "kotlin": len(kotlin_files),
+        "python": 0,
+        "xml": 0,
+        "gradle": 0,
+    }
     for path in files:
         suffix = path.suffix
-        if suffix == ".java":
+        if suffix in {".java", ".kt"}:
             continue
         before = path.read_text(encoding="utf-8-sig")
         if suffix == ".py":

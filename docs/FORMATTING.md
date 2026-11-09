@@ -5,12 +5,13 @@ Readable authored sources are a release requirement beginning with MapNotes 1.2.
 ## Standard and scope
 
 - Java: google-java-format **1.24.0**, **AOSP / 4-space** indentation. Imports remain semantically unchanged (no unused-import removal or import reordering); long string literals are not rewritten.
+- Kotlin: ktfmt **0.53**, `--kotlinlang-style` (4-space). Provide `--kotlin-formatter /outside/formatter/ktfmt-0.53-jar-with-dependencies.jar`. The helper checks SHA256 `76d05c614fe1864788557170fe89410f75134866a9f84011f9bd570ca12526b1` before execution.
 - Python: Black **26.10.1**, default 88-column style and AST-equivalence validation.
 - Android XML: four-space element indentation and multiline attribute lists. Resource string content, whitespace inside values and inline markup must be preserved.
-- Gradle: four-space blocks, one statement per line. The two small authored Groovy files were expanded manually and have a structural whitespace check; no general-purpose Groovy syntax rewrite is attempted.
+- Gradle: four-space blocks, one statement per line. Authored Groovy files have a structural whitespace check (including string continuations); no general-purpose Groovy syntax rewrite is attempted.
 - `.editorconfig`: UTF-8, LF, final newline and indentation defaults. `.gitattributes` keeps authored source checkouts on LF even with Windows `core.autocrlf` enabled.
 
-The checked source scope currently contains 81 Java files (application and both test trees), 10 Python files, 6 XML files and 2 Gradle files. `tools/format_code.py` discovers tracked and nonignored authored sources through Git. It does not scan build directories, caches, credentials or all files on the host. `assets/world.json` is geographic data, not minified application code, and is intentionally untouched.
+The helper discovers tracked and nonignored authored Java/Kotlin/Python/XML/Gradle files through Git, including root Gradle configuration; it prints actual counts on every run. It does not scan build directories, caches, credentials or all files on the host. `assets/world.json` is geographic data, not minified application code, and is intentionally untouched.
 
 ## Commands
 
@@ -21,10 +22,10 @@ Provide the all-dependencies JAR from the official google/google-java-format **v
 python -m pip install --target /outside/formatter/black-lib black==26.10.1
 
 # Format:
-python tools/format_code.py --java-formatter /outside/formatter/google-java-format-1.24.0-all-deps.jar --black-path /outside/formatter/black-lib
+python tools/format_code.py --java-formatter /outside/formatter/google-java-format-1.24.0-all-deps.jar --black-path /outside/formatter/black-lib --kotlin-formatter /outside/formatter/ktfmt-0.53-jar-with-dependencies.jar
 
 # Read-only gate (exit 1 if formatting is needed):
-python tools/format_code.py --check --java-formatter /outside/formatter/google-java-format-1.24.0-all-deps.jar --black-path /outside/formatter/black-lib
+python tools/format_code.py --check --java-formatter /outside/formatter/google-java-format-1.24.0-all-deps.jar --black-path /outside/formatter/black-lib --kotlin-formatter /outside/formatter/ktfmt-0.53-jar-with-dependencies.jar
 
 python tools/test_formatting.py
 python tools/verify_resources.py
