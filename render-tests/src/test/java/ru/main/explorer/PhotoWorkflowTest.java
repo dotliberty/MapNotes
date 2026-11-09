@@ -1,18 +1,154 @@
 package ru.main.explorer;
-import android.app.Application;import android.content.Intent;import android.database.sqlite.SQLiteDatabase;import android.graphics.*;import android.location.Location;import android.os.SystemClock;import android.widget.*;import java.io.*;import java.lang.reflect.*;import java.util.*;
-import org.junit.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.*;import static org.junit.Assert.*;
 
-@RunWith(RobolectricTestRunner.class) @Config(sdk=34,qualifiers="mdpi") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+import android.app.Application;
+import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
+import android.graphics.*;
+import android.location.Location;
+import android.os.SystemClock;
+import android.widget.*;
+import java.io.*;
+import java.lang.reflect.*;
+import java.util.*;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.robolectric.*;
+import org.robolectric.annotation.*;
+import static org.junit.Assert.*;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 34, qualifiers = "mdpi")
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class PhotoWorkflowTest {
- Application app;Location fix;ArrayList<File> images=new ArrayList<>();
- @Before public void setUp(){app=RuntimeEnvironment.getApplication();fix=new Location("gps");fix.setLatitude(55.748);fix.setLongitude(37.612);fix.setAccuracy(10);fix.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());fix.setTime(System.currentTimeMillis());}
- @After public void cleanup(){for(File f:images)f.delete();}
- byte[] jpeg(){Bitmap b=Bitmap.createBitmap(240,160,Bitmap.Config.ARGB_8888);b.eraseColor(0xffcb7529);ByteArrayOutputStream out=new ByteArrayOutputStream();b.compress(Bitmap.CompressFormat.JPEG,95,out);return out.toByteArray();}
- long save()throws Exception{long id=PhotoFiles.save(app,jpeg(),fix,12345678);try(Store db=new Store(app)){images.add(new File(db.photo(id).path));}return id;}
- @Test public void jpegAndCoordinatesAndNoteSurviveReopen()throws Exception{long id=save();try(Store db=new Store(app)){Store.Photo p=db.photo(id);assertTrue(new File(p.path).isFile());assertEquals(fix.getLatitude(),p.lat,1e-8);assertEquals(fix.getLongitude(),p.lon,1e-8);assertEquals(10,p.accuracy,.1);db.saveNote(id,"Дом у реки\nВернуться вечером");}try(Store db=new Store(app)){assertEquals("Дом у реки\nВернуться вечером",db.photo(id).note);assertNotNull(PhotoFiles.load(db.photo(id).path,96));}}
- @Test public void cancelledOrBrokenCaptureDoesNotAddPhoto()throws Exception{try(Store db=new Store(app)){int before=db.photos().size();try{PhotoFiles.save(app,new byte[]{1,2,3},fix,1);fail();}catch(IOException expected){}assertEquals(before,db.photos().size());}}
- @Test public void upgradeFromOldWalkDatabasePreservesRoute(){app.deleteDatabase("walks.db");try(SQLiteDatabase old=app.openOrCreateDatabase("walks.db",0,null)){old.execSQL("CREATE TABLE points(id INTEGER PRIMARY KEY,lat REAL,lon REAL,acc REAL,t INTEGER,session INTEGER)");old.execSQL("INSERT INTO points VALUES(1,55,37,10,100,1)");old.setVersion(1);}try(Store db=new Store(app)){assertEquals(1,db.points().size());assertEquals(55,db.points().get(0)[0],.00001);assertTrue(db.photos().isEmpty());}}
- @Test public void photoMarkerOpensSavedPhotoOnTap()throws Exception{long id=save();MapView map=new MapView(app);map.online=false;try{map.layout(0,0,512,512);map.setCurrent(fix);try(Store db=new Store(app)){map.setPhotos(db.photos());}long[] tapped={-1};map.setPhotoTapListener(photos->tapped[0]=photos.get(0).id);assertTrue(map.tapPhotos(256,256));assertEquals(id,tapped[0]);}finally{map.close();}}
- @Test public void viewerAutomaticallySavesNoteOnLeaving()throws Exception{long id=save();Intent intent=new Intent(app,PhotoActivity.class).putExtra("id",id);org.robolectric.android.controller.ActivityController<PhotoActivity> controller=Robolectric.buildActivity(PhotoActivity.class,intent).setup();Field field=PhotoActivity.class.getDeclaredField("note");field.setAccessible(true);((EditText)field.get(controller.get())).setText("Моя заметка");controller.pause().stop().destroy();try(Store db=new Store(app)){assertEquals("Моя заметка",db.photo(id).note);}}
- @Test public void portraitExifIsRespectedInViewerAndThumbnails()throws Exception{long id=save();String path;try(Store db=new Store(app)){path=db.photo(id).path;}android.media.ExifInterface exif=new android.media.ExifInterface(path);exif.setAttribute(android.media.ExifInterface.TAG_ORIENTATION,"6");exif.saveAttributes();Bitmap image=PhotoFiles.load(path,2048);assertEquals(160,image.getWidth());assertEquals(240,image.getHeight());}
+    Application app;
+    Location fix;
+    ArrayList<File> images = new ArrayList<>();
+
+    @Before
+    public void setUp() {
+        app = RuntimeEnvironment.getApplication();
+        fix = new Location("gps");
+        fix.setLatitude(55.748);
+        fix.setLongitude(37.612);
+        fix.setAccuracy(10);
+        fix.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+        fix.setTime(System.currentTimeMillis());
+    }
+
+    @After
+    public void cleanup() {
+        for (File f : images) f.delete();
+    }
+
+    byte[] jpeg() {
+        Bitmap b = Bitmap.createBitmap(240, 160, Bitmap.Config.ARGB_8888);
+        b.eraseColor(0xffcb7529);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        b.compress(Bitmap.CompressFormat.JPEG, 95, out);
+        return out.toByteArray();
+    }
+
+    long save() throws Exception {
+        long id = PhotoFiles.save(app, jpeg(), fix, 12345678);
+        try (Store db = new Store(app)) {
+            images.add(new File(db.photo(id).path));
+        }
+        return id;
+    }
+
+    @Test
+    public void jpegAndCoordinatesAndNoteSurviveReopen() throws Exception {
+        long id = save();
+        try (Store db = new Store(app)) {
+            Store.Photo p = db.photo(id);
+            assertTrue(new File(p.path).isFile());
+            assertEquals(fix.getLatitude(), p.lat, 1e-8);
+            assertEquals(fix.getLongitude(), p.lon, 1e-8);
+            assertEquals(10, p.accuracy, .1);
+            db.saveNote(id, "Дом у реки\nВернуться вечером");
+        }
+        try (Store db = new Store(app)) {
+            assertEquals("Дом у реки\nВернуться вечером", db.photo(id).note);
+            assertNotNull(PhotoFiles.load(db.photo(id).path, 96));
+        }
+    }
+
+    @Test
+    public void cancelledOrBrokenCaptureDoesNotAddPhoto() throws Exception {
+        try (Store db = new Store(app)) {
+            int before = db.photos().size();
+            try {
+                PhotoFiles.save(app, new byte[] {1, 2, 3}, fix, 1);
+                fail();
+            } catch (IOException expected) {
+            }
+            assertEquals(before, db.photos().size());
+        }
+    }
+
+    @Test
+    public void upgradeFromOldWalkDatabasePreservesRoute() {
+        app.deleteDatabase("walks.db");
+        try (SQLiteDatabase old = app.openOrCreateDatabase("walks.db", 0, null)) {
+            old.execSQL(
+                    "CREATE TABLE points(id INTEGER PRIMARY KEY,lat REAL,lon REAL,acc REAL,t INTEGER,session INTEGER)");
+            old.execSQL("INSERT INTO points VALUES(1,55,37,10,100,1)");
+            old.setVersion(1);
+        }
+        try (Store db = new Store(app)) {
+            assertEquals(1, db.points().size());
+            assertEquals(55, db.points().get(0)[0], .00001);
+            assertTrue(db.photos().isEmpty());
+        }
+    }
+
+    @Test
+    public void photoMarkerOpensSavedPhotoOnTap() throws Exception {
+        long id = save();
+        MapView map = new MapView(app);
+        map.online = false;
+        try {
+            map.layout(0, 0, 512, 512);
+            map.setCurrent(fix);
+            try (Store db = new Store(app)) {
+                map.setPhotos(db.photos());
+            }
+            long[] tapped = {-1};
+            map.setPhotoTapListener(photos -> tapped[0] = photos.get(0).id);
+            assertTrue(map.tapPhotos(256, 256));
+            assertEquals(id, tapped[0]);
+        } finally {
+            map.close();
+        }
+    }
+
+    @Test
+    public void viewerAutomaticallySavesNoteOnLeaving() throws Exception {
+        long id = save();
+        Intent intent = new Intent(app, PhotoActivity.class).putExtra("id", id);
+        org.robolectric.android.controller.ActivityController<PhotoActivity> controller =
+                Robolectric.buildActivity(PhotoActivity.class, intent).setup();
+        Field field = PhotoActivity.class.getDeclaredField("note");
+        field.setAccessible(true);
+        ((EditText) field.get(controller.get())).setText("Моя заметка");
+        controller.pause().stop().destroy();
+        try (Store db = new Store(app)) {
+            assertEquals("Моя заметка", db.photo(id).note);
+        }
+    }
+
+    @Test
+    public void portraitExifIsRespectedInViewerAndThumbnails() throws Exception {
+        long id = save();
+        String path;
+        try (Store db = new Store(app)) {
+            path = db.photo(id).path;
+        }
+        android.media.ExifInterface exif = new android.media.ExifInterface(path);
+        exif.setAttribute(android.media.ExifInterface.TAG_ORIENTATION, "6");
+        exif.saveAttributes();
+        Bitmap image = PhotoFiles.load(path, 2048);
+        assertEquals(160, image.getWidth());
+        assertEquals(240, image.getHeight());
+    }
 }

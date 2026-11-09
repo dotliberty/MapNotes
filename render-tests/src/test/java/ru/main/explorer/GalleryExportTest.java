@@ -1,66 +1,411 @@
 package ru.main.explorer;
 
-import android.Manifest;import android.app.*;import android.content.*;import android.content.pm.ProviderInfo;import android.database.*;import android.graphics.*;import android.location.Location;import android.media.ExifInterface;import android.net.Uri;import android.os.*;import android.provider.MediaStore;
-import java.io.*;import java.nio.file.Files;import java.util.*;
-import org.junit.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.*;import org.robolectric.shadows.*;import static org.junit.Assert.*;
+import android.Manifest;
+import android.app.*;
+import android.content.*;
+import android.content.pm.ProviderInfo;
+import android.database.*;
+import android.graphics.*;
+import android.location.Location;
+import android.media.ExifInterface;
+import android.net.Uri;
+import android.os.*;
+import android.provider.MediaStore;
+import java.io.*;
+import java.nio.file.Files;
+import java.util.*;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.robolectric.*;
+import org.robolectric.annotation.*;
+import org.robolectric.shadows.*;
+import static org.junit.Assert.*;
 
-@RunWith(RobolectricTestRunner.class) @Config(sdk=34,qualifiers="ru-mdpi") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 34, qualifiers = "ru-mdpi")
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class GalleryExportTest {
- Application app;TestMedia media;Store.Photo photo;
- /** A real ContentProvider and file descriptors, not a stubbed exporter. Android's MediaProvider is not part of Robolectric. */
- public static class TestMedia extends ContentProvider {
-  final LinkedHashMap<Long,ContentValues> rows=new LinkedHashMap<>();final HashMap<Long,File> files=new HashMap<>();long next=1;int inserts;boolean failOpen,failPublish,failDelete;String lastMode;final ArrayList<Integer> pending=new ArrayList<>();
-  public boolean onCreate(){return true;}public String getType(Uri u){return "image/jpeg";}
-  public Cursor query(Uri u,String[] projection,String selection,String[] args,String order){
-   if(selection==null){MatrixCursor cursor=new MatrixCursor(projection);ContentValues row=rows.get(ContentUris.parseId(u));if(row!=null)cursor.addRow(new Object[]{row.getAsInteger("is_pending")});return cursor;}
-   MatrixCursor cursor=new MatrixCursor(new String[]{"_id"});for(Map.Entry<Long,ContentValues> e:rows.entrySet()){ContentValues v=e.getValue();boolean match=selection.contains("relative_path")?args[0].equals(v.getAsString("_display_name"))&&args[1].equals(v.getAsString("relative_path")):args[0].equals(v.getAsString("_data"));if(match)cursor.addRow(new Object[]{e.getKey()});}return cursor;
-  }
-  public Uri insert(Uri u,ContentValues values){long id=next++;rows.put(id,new ContentValues(values));inserts++;try{files.put(id,File.createTempFile("gallery-",".jpg",getContext().getCacheDir()));}catch(IOException error){throw new IllegalStateException(error);}if(values.containsKey("is_pending"))pending.add(values.getAsInteger("is_pending"));return ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,id);}
-  public int update(Uri u,ContentValues values,String s,String[] a){if(failPublish&&Integer.valueOf(0).equals(values.getAsInteger("is_pending")))return 0;ContentValues row=rows.get(ContentUris.parseId(u));if(row==null)return 0;row.putAll(values);if(values.containsKey("is_pending"))pending.add(values.getAsInteger("is_pending"));return 1;}
-  public int delete(Uri u,String s,String[] a){if(failDelete)throw new SecurityException("delete denied");long id=ContentUris.parseId(u);File f=files.remove(id);if(f!=null)f.delete();return rows.remove(id)==null?0:1;}
-  public ParcelFileDescriptor openFile(Uri u,String mode)throws FileNotFoundException{if(failOpen)throw new FileNotFoundException("disk unavailable");lastMode=mode;File f=files.get(ContentUris.parseId(u));if(f==null)throw new FileNotFoundException();return ParcelFileDescriptor.open(f,ParcelFileDescriptor.parseMode(mode));}
- }
- @Before public void setup()throws Exception{
-  app=RuntimeEnvironment.getApplication();app.deleteDatabase("walks.db");app.getSharedPreferences("gallery-export",0).edit().clear().commit();
-  media=new TestMedia();ProviderInfo info=new ProviderInfo();info.authority="media";media.attachInfo(app,info);ShadowContentResolver.registerProviderInternal("media",media);
-  Bitmap bitmap=Bitmap.createBitmap(32,24,Bitmap.Config.ARGB_8888);bitmap.eraseColor(Color.GREEN);ByteArrayOutputStream bytes=new ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.JPEG,90,bytes);
-  Location l=new Location("gps");l.setLatitude(55.7);l.setLongitude(37.6);l.setAccuracy(7);
-  long id=PhotoFiles.save(app,bytes.toByteArray(),l,1730000000123L);try(Store db=new Store(app)){db.saveNote(id,"Не потерять заметку");photo=db.photo(id);}
- }
- @After public void cleanup(){new File(photo.path).delete();for(File f:media.files.values())f.delete();}
- byte[] exported(Uri uri)throws Exception{return Files.readAllBytes(media.files.get(ContentUris.parseId(uri)).toPath());}
- @Test public void modernPublishesOriginalExifWithoutStoragePermission()throws Exception{
-  ExifInterface exif=new ExifInterface(photo.path);exif.setAttribute(ExifInterface.TAG_ORIENTATION,"6");exif.setAttribute(ExifInterface.TAG_GPS_LATITUDE,"55/1,42/1,0/1");exif.setAttribute(ExifInterface.TAG_GPS_LATITUDE_REF,"N");exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE,"37/1,36/1,0/1");exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF,"E");exif.saveAttributes();byte[] original=Files.readAllBytes(new File(photo.path).toPath());
-  assertFalse(GalleryExport.needsPermission(app));GalleryExport.Result result=GalleryExport.save(app,photo);assertFalse(result.alreadySaved);assertArrayEquals(original,exported(result.uri));assertEquals(Arrays.asList(1,0),media.pending);assertEquals("r",media.lastMode);
-  ContentValues row=media.rows.get(ContentUris.parseId(result.uri));assertEquals("Pictures/MapNotes/",row.getAsString("relative_path"));assertEquals("image/jpeg",row.getAsString("mime_type"));assertEquals(Long.valueOf(photo.created),row.getAsLong("datetaken"));assertFalse(row.containsKey("_data"));
-  ExifInterface copy=new ExifInterface(media.files.get(ContentUris.parseId(result.uri)).getPath());assertEquals(6,copy.getAttributeInt(ExifInterface.TAG_ORIENTATION,0));float[] gps=new float[2];assertTrue(copy.getLatLong(gps));assertEquals(55.7,gps[0],.0001);
-  try(Store db=new Store(app)){Store.Photo p=db.photo(photo.id);assertEquals(photo.note,p.note);assertEquals(photo.lat,p.lat,0);assertEquals(photo.lon,p.lon,0);assertEquals(photo.path,p.path);}assertArrayEquals(original,Files.readAllBytes(new File(photo.path).toPath()));
- }
- @Test public void repeatAfterReopenDoesNotInsertAnotherCopy()throws Exception{GalleryExport.Result first=GalleryExport.save(app,photo);try(Store reopened=new Store(app)){assertTrue(GalleryExport.save(app,reopened.photo(photo.id)).alreadySaved);}assertEquals(1,media.inserts);assertEquals(1,media.rows.size());assertArrayEquals(Files.readAllBytes(new File(photo.path).toPath()),exported(first.uri));}
- @Test public void failedWriteCleansRowAndRetryWorks()throws Exception{media.failOpen=true;try{GalleryExport.save(app,photo);fail();}catch(IOException expected){}assertTrue(media.rows.isEmpty());assertTrue(new File(photo.path).isFile());media.failOpen=false;assertFalse(GalleryExport.save(app,photo).alreadySaved);assertEquals(1,media.rows.size());}
- @Test public void publishFailureAndUndeletablePendingRowAreRecoveredWithoutDuplicate()throws Exception{media.failPublish=true;media.failDelete=true;try{GalleryExport.save(app,photo);fail();}catch(IOException expected){}assertEquals(1,media.rows.size());media.failPublish=false;media.failDelete=false;GalleryExport.save(app,photo);assertEquals(1,media.inserts);assertEquals(1,media.rows.size());assertEquals(Integer.valueOf(0),media.rows.values().iterator().next().getAsInteger("is_pending"));}
- @Test public void interruptedAfterInsertOrWriteReusesStableName()throws Exception{GalleryExport.Result result=GalleryExport.save(app,photo);app.getSharedPreferences("gallery-export",0).edit().remove("photo-"+photo.id).commit();media.rows.get(ContentUris.parseId(result.uri)).put("is_pending",1);assertFalse(GalleryExport.save(app,photo).alreadySaved);assertEquals(1,media.inserts);assertArrayEquals(Files.readAllBytes(new File(photo.path).toPath()),exported(result.uri));}
- @Test public void deletedGalleryCopyCanBeExplicitlyExportedAgain()throws Exception{Uri first=GalleryExport.save(app,photo).uri;media.delete(first,null,null);assertFalse(GalleryExport.save(app,photo).alreadySaved);assertEquals(1,media.rows.size());}
- @Test public void missingPrivateOriginalDoesNotCreateRow()throws Exception{assertTrue(new File(photo.path).delete());try{GalleryExport.save(app,photo);fail();}catch(IOException expected){}assertEquals(0,media.inserts);}
- @Test public void renamedOrMovedCompletedCopyIsStillRecognized()throws Exception{GalleryExport.Result first=GalleryExport.save(app,photo);ContentValues row=media.rows.get(ContentUris.parseId(first.uri));row.put("_display_name","renamed.jpg");row.put("relative_path","Pictures/Elsewhere/");assertTrue(GalleryExport.save(app,photo).alreadySaved);assertEquals(1,media.inserts);}
- @Test public void truncatedCompletedCopyIsRewrittenNotDuplicated()throws Exception{GalleryExport.Result first=GalleryExport.save(app,photo);try(FileOutputStream out=new FileOutputStream(media.files.get(ContentUris.parseId(first.uri)))){out.write(1);}assertFalse(GalleryExport.save(app,photo).alreadySaved);assertEquals(1,media.inserts);assertArrayEquals(Files.readAllBytes(new File(photo.path).toPath()),exported(first.uri));}
- @Test public void staleCompletedJournalCannotHidePendingCopyAfterInterruptedRepair()throws Exception{GalleryExport.Result first=GalleryExport.save(app,photo);media.rows.get(ContentUris.parseId(first.uri)).put("is_pending",1);assertFalse(GalleryExport.save(app,photo).alreadySaved);assertEquals(1,media.inserts);assertEquals(Integer.valueOf(0),media.rows.get(ContentUris.parseId(first.uri)).getAsInteger("is_pending"));}
- void waitForExport(PhotoActivity activity)throws Exception{long limit=System.nanoTime()+5000000000L;while(activity.exporting&&System.nanoTime()<limit){Shadows.shadowOf(Looper.getMainLooper()).idle();Thread.sleep(5);}Shadows.shadowOf(Looper.getMainLooper()).idle();assertFalse("export worker must complete",activity.exporting);}
- @Test public void viewerButtonReportsSuccessRepeatAndFailureWithoutLosingNote()throws Exception{
-  org.robolectric.android.controller.ActivityController<PhotoActivity> controller=Robolectric.buildActivity(PhotoActivity.class,new Intent(app,PhotoActivity.class).putExtra("id",photo.id)).setup();PhotoActivity activity=controller.get();
-  try{assertEquals("Сохранить в галерею",activity.gallery.getText().toString());activity.note.setText("Изменено перед экспортом");activity.gallery.performClick();activity.requestExport();waitForExport(activity);assertTrue(activity.exportStatus.getText().toString().startsWith("Сохранено в галерею"));assertEquals(1,media.inserts);
-   android.view.View root=activity.getWindow().getDecorView();root.measure(android.view.View.MeasureSpec.makeMeasureSpec(432,1073741824),android.view.View.MeasureSpec.makeMeasureSpec(960,1073741824));root.layout(0,0,432,960);Bitmap preview=Bitmap.createBitmap(432,960,Bitmap.Config.ARGB_8888);root.draw(new Canvas(preview));File target=new File("build/rendered/photo-export-013.png");target.getParentFile().mkdirs();try(FileOutputStream out=new FileOutputStream(target)){assertTrue(preview.compress(Bitmap.CompressFormat.PNG,100,out));}
-   activity.gallery.performClick();waitForExport(activity);assertTrue(activity.exportStatus.getText().toString().startsWith("Уже сохранено"));assertEquals(1,media.inserts);
-   media.delete(Uri.parse(app.getSharedPreferences("gallery-export",0).getString("photo-"+photo.id,"")),null,null);media.failOpen=true;activity.gallery.performClick();waitForExport(activity);assertTrue(activity.exportStatus.getText().toString().startsWith("Не сохранено:"));assertTrue(activity.gallery.isEnabled());assertTrue(new File(photo.path).isFile());
-  }finally{controller.pause().stop().destroy();}
-  try(Store db=new Store(app)){assertEquals("Изменено перед экспортом",db.photo(photo.id).note);}
- }
- @Test @Config(sdk=29) public void android10UsesPendingPublicationWithoutPermission()throws Exception{assertFalse(GalleryExport.needsPermission(app));GalleryExport.save(app,photo);assertEquals(Arrays.asList(1,0),media.pending);}
- @Test @Config(sdk={26,28}) @GraphicsMode(GraphicsMode.Mode.LEGACY) public void legacyPermissionIsRequiredAndExportIsIndexed()throws Exception{
-  Shadows.shadowOf(app).denyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);assertTrue(GalleryExport.needsPermission(app));try{GalleryExport.save(app,photo);fail();}catch(IOException expected){}assertEquals(0,media.inserts);
-  Shadows.shadowOf(app).grantPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);GalleryExport.Result result=GalleryExport.save(app,photo);ContentValues row=media.rows.values().iterator().next();assertTrue(row.getAsString("_data").contains("MapNotes"));assertFalse(row.containsKey("is_pending"));assertFalse(row.containsKey("relative_path"));assertArrayEquals(Files.readAllBytes(new File(photo.path).toPath()),exported(result.uri));assertTrue(GalleryExport.save(app,photo).alreadySaved);assertEquals(1,media.inserts);
- }
- @Test @Config(sdk=28) @GraphicsMode(GraphicsMode.Mode.LEGACY) public void viewerRequestsOnlyLegacyWriteAndExplainsDenial(){
-  Shadows.shadowOf(app).denyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);org.robolectric.android.controller.ActivityController<PhotoActivity> controller=Robolectric.buildActivity(PhotoActivity.class,new Intent(app,PhotoActivity.class).putExtra("id",photo.id)).setup();PhotoActivity activity=controller.get();activity.gallery.performClick();assertArrayEquals(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},Shadows.shadowOf(activity).getLastRequestedPermission().requestedPermissions);activity.onRequestPermissionsResult(71,new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},new int[]{-1});assertTrue(activity.exportStatus.getText().toString().contains("не разрешён"));assertEquals(0,media.inserts);controller.pause().stop().destroy();
- }
+    Application app;
+    TestMedia media;
+    Store.Photo photo;
+
+    /**
+     * A real ContentProvider and file descriptors, not a stubbed exporter. Android's MediaProvider
+     * is not part of Robolectric.
+     */
+    public static class TestMedia extends ContentProvider {
+        final LinkedHashMap<Long, ContentValues> rows = new LinkedHashMap<>();
+        final HashMap<Long, File> files = new HashMap<>();
+        long next = 1;
+        int inserts;
+        boolean failOpen, failPublish, failDelete;
+        String lastMode;
+        final ArrayList<Integer> pending = new ArrayList<>();
+
+        public boolean onCreate() {
+            return true;
+        }
+
+        public String getType(Uri u) {
+            return "image/jpeg";
+        }
+
+        public Cursor query(
+                Uri u, String[] projection, String selection, String[] args, String order) {
+            if (selection == null) {
+                MatrixCursor cursor = new MatrixCursor(projection);
+                ContentValues row = rows.get(ContentUris.parseId(u));
+                if (row != null) cursor.addRow(new Object[] {row.getAsInteger("is_pending")});
+                return cursor;
+            }
+            MatrixCursor cursor = new MatrixCursor(new String[] {"_id"});
+            for (Map.Entry<Long, ContentValues> e : rows.entrySet()) {
+                ContentValues v = e.getValue();
+                boolean match =
+                        selection.contains("relative_path")
+                                ? args[0].equals(v.getAsString("_display_name"))
+                                        && args[1].equals(v.getAsString("relative_path"))
+                                : args[0].equals(v.getAsString("_data"));
+                if (match) cursor.addRow(new Object[] {e.getKey()});
+            }
+            return cursor;
+        }
+
+        public Uri insert(Uri u, ContentValues values) {
+            long id = next++;
+            rows.put(id, new ContentValues(values));
+            inserts++;
+            try {
+                files.put(id, File.createTempFile("gallery-", ".jpg", getContext().getCacheDir()));
+            } catch (IOException error) {
+                throw new IllegalStateException(error);
+            }
+            if (values.containsKey("is_pending")) pending.add(values.getAsInteger("is_pending"));
+            return ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
+        }
+
+        public int update(Uri u, ContentValues values, String s, String[] a) {
+            if (failPublish && Integer.valueOf(0).equals(values.getAsInteger("is_pending")))
+                return 0;
+            ContentValues row = rows.get(ContentUris.parseId(u));
+            if (row == null) return 0;
+            row.putAll(values);
+            if (values.containsKey("is_pending")) pending.add(values.getAsInteger("is_pending"));
+            return 1;
+        }
+
+        public int delete(Uri u, String s, String[] a) {
+            if (failDelete) throw new SecurityException("delete denied");
+            long id = ContentUris.parseId(u);
+            File f = files.remove(id);
+            if (f != null) f.delete();
+            return rows.remove(id) == null ? 0 : 1;
+        }
+
+        public ParcelFileDescriptor openFile(Uri u, String mode) throws FileNotFoundException {
+            if (failOpen) throw new FileNotFoundException("disk unavailable");
+            lastMode = mode;
+            File f = files.get(ContentUris.parseId(u));
+            if (f == null) throw new FileNotFoundException();
+            return ParcelFileDescriptor.open(f, ParcelFileDescriptor.parseMode(mode));
+        }
+    }
+
+    @Before
+    public void setup() throws Exception {
+        app = RuntimeEnvironment.getApplication();
+        app.deleteDatabase("walks.db");
+        app.getSharedPreferences("gallery-export", 0).edit().clear().commit();
+        media = new TestMedia();
+        ProviderInfo info = new ProviderInfo();
+        info.authority = "media";
+        media.attachInfo(app, info);
+        ShadowContentResolver.registerProviderInternal("media", media);
+        Bitmap bitmap = Bitmap.createBitmap(32, 24, Bitmap.Config.ARGB_8888);
+        bitmap.eraseColor(Color.GREEN);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, bytes);
+        Location l = new Location("gps");
+        l.setLatitude(55.7);
+        l.setLongitude(37.6);
+        l.setAccuracy(7);
+        long id = PhotoFiles.save(app, bytes.toByteArray(), l, 1730000000123L);
+        try (Store db = new Store(app)) {
+            db.saveNote(id, "Не потерять заметку");
+            photo = db.photo(id);
+        }
+    }
+
+    @After
+    public void cleanup() {
+        new File(photo.path).delete();
+        for (File f : media.files.values()) f.delete();
+    }
+
+    byte[] exported(Uri uri) throws Exception {
+        return Files.readAllBytes(media.files.get(ContentUris.parseId(uri)).toPath());
+    }
+
+    @Test
+    public void modernPublishesOriginalExifWithoutStoragePermission() throws Exception {
+        ExifInterface exif = new ExifInterface(photo.path);
+        exif.setAttribute(ExifInterface.TAG_ORIENTATION, "6");
+        exif.setAttribute(ExifInterface.TAG_GPS_LATITUDE, "55/1,42/1,0/1");
+        exif.setAttribute(ExifInterface.TAG_GPS_LATITUDE_REF, "N");
+        exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE, "37/1,36/1,0/1");
+        exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF, "E");
+        exif.saveAttributes();
+        byte[] original = Files.readAllBytes(new File(photo.path).toPath());
+        assertFalse(GalleryExport.needsPermission(app));
+        GalleryExport.Result result = GalleryExport.save(app, photo);
+        assertFalse(result.alreadySaved);
+        assertArrayEquals(original, exported(result.uri));
+        assertEquals(Arrays.asList(1, 0), media.pending);
+        assertEquals("r", media.lastMode);
+        ContentValues row = media.rows.get(ContentUris.parseId(result.uri));
+        assertEquals("Pictures/MapNotes/", row.getAsString("relative_path"));
+        assertEquals("image/jpeg", row.getAsString("mime_type"));
+        assertEquals(Long.valueOf(photo.created), row.getAsLong("datetaken"));
+        assertFalse(row.containsKey("_data"));
+        ExifInterface copy =
+                new ExifInterface(media.files.get(ContentUris.parseId(result.uri)).getPath());
+        assertEquals(6, copy.getAttributeInt(ExifInterface.TAG_ORIENTATION, 0));
+        float[] gps = new float[2];
+        assertTrue(copy.getLatLong(gps));
+        assertEquals(55.7, gps[0], .0001);
+        try (Store db = new Store(app)) {
+            Store.Photo p = db.photo(photo.id);
+            assertEquals(photo.note, p.note);
+            assertEquals(photo.lat, p.lat, 0);
+            assertEquals(photo.lon, p.lon, 0);
+            assertEquals(photo.path, p.path);
+        }
+        assertArrayEquals(original, Files.readAllBytes(new File(photo.path).toPath()));
+    }
+
+    @Test
+    public void repeatAfterReopenDoesNotInsertAnotherCopy() throws Exception {
+        GalleryExport.Result first = GalleryExport.save(app, photo);
+        try (Store reopened = new Store(app)) {
+            assertTrue(GalleryExport.save(app, reopened.photo(photo.id)).alreadySaved);
+        }
+        assertEquals(1, media.inserts);
+        assertEquals(1, media.rows.size());
+        assertArrayEquals(Files.readAllBytes(new File(photo.path).toPath()), exported(first.uri));
+    }
+
+    @Test
+    public void failedWriteCleansRowAndRetryWorks() throws Exception {
+        media.failOpen = true;
+        try {
+            GalleryExport.save(app, photo);
+            fail();
+        } catch (IOException expected) {
+        }
+        assertTrue(media.rows.isEmpty());
+        assertTrue(new File(photo.path).isFile());
+        media.failOpen = false;
+        assertFalse(GalleryExport.save(app, photo).alreadySaved);
+        assertEquals(1, media.rows.size());
+    }
+
+    @Test
+    public void publishFailureAndUndeletablePendingRowAreRecoveredWithoutDuplicate()
+            throws Exception {
+        media.failPublish = true;
+        media.failDelete = true;
+        try {
+            GalleryExport.save(app, photo);
+            fail();
+        } catch (IOException expected) {
+        }
+        assertEquals(1, media.rows.size());
+        media.failPublish = false;
+        media.failDelete = false;
+        GalleryExport.save(app, photo);
+        assertEquals(1, media.inserts);
+        assertEquals(1, media.rows.size());
+        assertEquals(
+                Integer.valueOf(0),
+                media.rows.values().iterator().next().getAsInteger("is_pending"));
+    }
+
+    @Test
+    public void interruptedAfterInsertOrWriteReusesStableName() throws Exception {
+        GalleryExport.Result result = GalleryExport.save(app, photo);
+        app.getSharedPreferences("gallery-export", 0).edit().remove("photo-" + photo.id).commit();
+        media.rows.get(ContentUris.parseId(result.uri)).put("is_pending", 1);
+        assertFalse(GalleryExport.save(app, photo).alreadySaved);
+        assertEquals(1, media.inserts);
+        assertArrayEquals(Files.readAllBytes(new File(photo.path).toPath()), exported(result.uri));
+    }
+
+    @Test
+    public void deletedGalleryCopyCanBeExplicitlyExportedAgain() throws Exception {
+        Uri first = GalleryExport.save(app, photo).uri;
+        media.delete(first, null, null);
+        assertFalse(GalleryExport.save(app, photo).alreadySaved);
+        assertEquals(1, media.rows.size());
+    }
+
+    @Test
+    public void missingPrivateOriginalDoesNotCreateRow() throws Exception {
+        assertTrue(new File(photo.path).delete());
+        try {
+            GalleryExport.save(app, photo);
+            fail();
+        } catch (IOException expected) {
+        }
+        assertEquals(0, media.inserts);
+    }
+
+    @Test
+    public void renamedOrMovedCompletedCopyIsStillRecognized() throws Exception {
+        GalleryExport.Result first = GalleryExport.save(app, photo);
+        ContentValues row = media.rows.get(ContentUris.parseId(first.uri));
+        row.put("_display_name", "renamed.jpg");
+        row.put("relative_path", "Pictures/Elsewhere/");
+        assertTrue(GalleryExport.save(app, photo).alreadySaved);
+        assertEquals(1, media.inserts);
+    }
+
+    @Test
+    public void truncatedCompletedCopyIsRewrittenNotDuplicated() throws Exception {
+        GalleryExport.Result first = GalleryExport.save(app, photo);
+        try (FileOutputStream out =
+                new FileOutputStream(media.files.get(ContentUris.parseId(first.uri)))) {
+            out.write(1);
+        }
+        assertFalse(GalleryExport.save(app, photo).alreadySaved);
+        assertEquals(1, media.inserts);
+        assertArrayEquals(Files.readAllBytes(new File(photo.path).toPath()), exported(first.uri));
+    }
+
+    @Test
+    public void staleCompletedJournalCannotHidePendingCopyAfterInterruptedRepair()
+            throws Exception {
+        GalleryExport.Result first = GalleryExport.save(app, photo);
+        media.rows.get(ContentUris.parseId(first.uri)).put("is_pending", 1);
+        assertFalse(GalleryExport.save(app, photo).alreadySaved);
+        assertEquals(1, media.inserts);
+        assertEquals(
+                Integer.valueOf(0),
+                media.rows.get(ContentUris.parseId(first.uri)).getAsInteger("is_pending"));
+    }
+
+    void waitForExport(PhotoActivity activity) throws Exception {
+        long limit = System.nanoTime() + 5000000000L;
+        while (activity.exporting && System.nanoTime() < limit) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            Thread.sleep(5);
+        }
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        assertFalse("export worker must complete", activity.exporting);
+    }
+
+    @Test
+    public void viewerButtonReportsSuccessRepeatAndFailureWithoutLosingNote() throws Exception {
+        org.robolectric.android.controller.ActivityController<PhotoActivity> controller =
+                Robolectric.buildActivity(
+                                PhotoActivity.class,
+                                new Intent(app, PhotoActivity.class).putExtra("id", photo.id))
+                        .setup();
+        PhotoActivity activity = controller.get();
+        try {
+            assertEquals("Сохранить в галерею", activity.gallery.getText().toString());
+            activity.note.setText("Изменено перед экспортом");
+            activity.gallery.performClick();
+            activity.requestExport();
+            waitForExport(activity);
+            assertTrue(
+                    activity.exportStatus.getText().toString().startsWith("Сохранено в галерею"));
+            assertEquals(1, media.inserts);
+            android.view.View root = activity.getWindow().getDecorView();
+            root.measure(
+                    android.view.View.MeasureSpec.makeMeasureSpec(432, 1073741824),
+                    android.view.View.MeasureSpec.makeMeasureSpec(960, 1073741824));
+            root.layout(0, 0, 432, 960);
+            Bitmap preview = Bitmap.createBitmap(432, 960, Bitmap.Config.ARGB_8888);
+            root.draw(new Canvas(preview));
+            File target = new File("build/rendered/photo-export-013.png");
+            target.getParentFile().mkdirs();
+            try (FileOutputStream out = new FileOutputStream(target)) {
+                assertTrue(preview.compress(Bitmap.CompressFormat.PNG, 100, out));
+            }
+            activity.gallery.performClick();
+            waitForExport(activity);
+            assertTrue(activity.exportStatus.getText().toString().startsWith("Уже сохранено"));
+            assertEquals(1, media.inserts);
+            media.delete(
+                    Uri.parse(
+                            app.getSharedPreferences("gallery-export", 0)
+                                    .getString("photo-" + photo.id, "")),
+                    null,
+                    null);
+            media.failOpen = true;
+            activity.gallery.performClick();
+            waitForExport(activity);
+            assertTrue(activity.exportStatus.getText().toString().startsWith("Не сохранено:"));
+            assertTrue(activity.gallery.isEnabled());
+            assertTrue(new File(photo.path).isFile());
+        } finally {
+            controller.pause().stop().destroy();
+        }
+        try (Store db = new Store(app)) {
+            assertEquals("Изменено перед экспортом", db.photo(photo.id).note);
+        }
+    }
+
+    @Test
+    @Config(sdk = 29)
+    public void android10UsesPendingPublicationWithoutPermission() throws Exception {
+        assertFalse(GalleryExport.needsPermission(app));
+        GalleryExport.save(app, photo);
+        assertEquals(Arrays.asList(1, 0), media.pending);
+    }
+
+    @Test
+    @Config(sdk = {26, 28})
+    @GraphicsMode(GraphicsMode.Mode.LEGACY)
+    public void legacyPermissionIsRequiredAndExportIsIndexed() throws Exception {
+        Shadows.shadowOf(app).denyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        assertTrue(GalleryExport.needsPermission(app));
+        try {
+            GalleryExport.save(app, photo);
+            fail();
+        } catch (IOException expected) {
+        }
+        assertEquals(0, media.inserts);
+        Shadows.shadowOf(app).grantPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        GalleryExport.Result result = GalleryExport.save(app, photo);
+        ContentValues row = media.rows.values().iterator().next();
+        assertTrue(row.getAsString("_data").contains("MapNotes"));
+        assertFalse(row.containsKey("is_pending"));
+        assertFalse(row.containsKey("relative_path"));
+        assertArrayEquals(Files.readAllBytes(new File(photo.path).toPath()), exported(result.uri));
+        assertTrue(GalleryExport.save(app, photo).alreadySaved);
+        assertEquals(1, media.inserts);
+    }
+
+    @Test
+    @Config(sdk = 28)
+    @GraphicsMode(GraphicsMode.Mode.LEGACY)
+    public void viewerRequestsOnlyLegacyWriteAndExplainsDenial() {
+        Shadows.shadowOf(app).denyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        org.robolectric.android.controller.ActivityController<PhotoActivity> controller =
+                Robolectric.buildActivity(
+                                PhotoActivity.class,
+                                new Intent(app, PhotoActivity.class).putExtra("id", photo.id))
+                        .setup();
+        PhotoActivity activity = controller.get();
+        activity.gallery.performClick();
+        assertArrayEquals(
+                new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                Shadows.shadowOf(activity).getLastRequestedPermission().requestedPermissions);
+        activity.onRequestPermissionsResult(
+                71, new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, new int[] {-1});
+        assertTrue(activity.exportStatus.getText().toString().contains("не разрешён"));
+        assertEquals(0, media.inserts);
+        controller.pause().stop().destroy();
+    }
 }

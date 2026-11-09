@@ -1,17 +1,313 @@
 package ru.main.explorer;
-import android.app.*;import android.location.Location;import java.io.*;import java.net.*;import java.lang.reflect.*;import java.util.*;import java.util.concurrent.*;import java.util.concurrent.atomic.*;import org.junit.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.*;import static org.junit.Assert.*;
-@RunWith(RobolectricTestRunner.class) @Config(sdk=34,qualifiers="ru-mdpi") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+
+import android.app.*;
+import android.location.Location;
+import java.io.*;
+import java.net.*;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.robolectric.*;
+import org.robolectric.annotation.*;
+import static org.junit.Assert.*;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 34, qualifiers = "ru-mdpi")
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class StabilityTest {
- @Test public void pausingCannotBlockUiOnASlowSocketClose()throws Exception{Application app=RuntimeEnvironment.getApplication();MapNetwork.setEnabled(app,true);CountDownLatch closing=new CountDownLatch(1),release=new CountDownLatch(1);HttpURLConnection socket=new HttpURLConnection(new URL("http://127.0.0.1")){public void connect(){}public boolean usingProxy(){return false;}public void disconnect(){closing.countDown();try{release.await(5,TimeUnit.SECONDS);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();}}};try{MapNetwork.register(app,socket);MapNetwork.setEnabled(app,false);assertTrue(closing.await(5,TimeUnit.SECONDS));assertFalse(MapNetwork.enabled(app));try{MapNetwork.register(app,socket);fail("No new offline or live request may pass the paused gate");}catch(MapNetwork.Paused expected){}}finally{release.countDown();MapNetwork.setEnabled(app,true);}}
- @Test public void angularIndexMatchesExhaustiveRayIntersections(){Random random=new Random(719);for(int world=0;world<60;world++){ArrayList<double[]> buildings=new ArrayList<>();for(int i=0;i<24;i++){double x=random.nextDouble()*220-110,y=random.nextDouble()*220-110,w=1+random.nextDouble()*18,h=1+random.nextDouble()*18;buildings.add(new double[]{y/111195.08,x/111195.08,y/111195.08,(x+w)/111195.08,(y+h)/111195.08,(x+w)/111195.08,(y+h)/111195.08,x/111195.08,y/111195.08,x/111195.08});}assertArrayEquals("World "+world,VisibilityReference.polygon(0,0,100,buildings),Visibility.polygon(0,0,100,buildings),1e-9);}}
- @Test public void denseStreetVisibilityBenchmarkKeepsExactResult(){ArrayList<double[]> buildings=new ArrayList<>();for(int row=-9;row<=9;row++)for(int col=-9;col<=9;col++){if(Math.abs(row)<2&&Math.abs(col)<2)continue;double x=col*10,y=row*10,k=111195.08;buildings.add(new double[]{y/k,x/k,y/k,(x+6)/k,(y+6)/k,(x+6)/k,(y+6)/k,x/k,y/k,x/k});}long start=System.nanoTime();double[] reference=VisibilityReference.polygon(0,0,100,buildings);long oldTime=System.nanoTime()-start;start=System.nanoTime();double[] indexed=Visibility.polygon(0,0,100,buildings);long newTime=System.nanoTime()-start;assertArrayEquals(reference,indexed,1e-9);System.out.println("Visibility dense street: exhaustive="+oldTime/1000000.0+"ms indexed="+newTime/1000000.0+"ms");}
- @Test public void gpsNoiseDoesNotRecenterOrRestartVisibility()throws Exception{MapView map=new MapView(RuntimeEnvironment.getApplication());map.online=false;map.layout(0,0,512,512);try{Location l=new Location("gps");l.setLatitude(55.748);l.setLongitude(37.612);l.setAccuracy(10);map.setCurrent(l,true);double x=map.cx,y=map.cy;Field revision=MapView.class.getDeclaredField("revision");revision.setAccessible(true);long before=revision.getLong(map);for(int i=0;i<40;i++){l.setLatitude(55.748+(i%2==0?1:-1)/111195.08);map.setCurrent(l,true);}assertEquals(x,map.cx,0);assertEquals(y,map.cy,0);assertEquals(before,revision.getLong(map));l.setLatitude(55.748+40/111195.08);map.setCurrent(l,true);assertNotEquals(y,map.cy,0);}finally{map.close();}}
- @Test public void partialRefreshCannotEraseCompletedHistory()throws Exception{MapView map=new MapView(RuntimeEnvironment.getApplication());map.layout(0,0,512,512);map.cx=128;map.cy=128;map.zoom=16;Field ready=MapView.class.getDeclaredField("readyFrame");ready.setAccessible(true);try{RouteFrame completed=new RouteFrame(map.cx,map.cy,map.zoom,512,512,1,new ArrayList<>(),null,null);completed.complete=true;ready.set(map,completed);RouteFrame partial=new RouteFrame(map.cx,map.cy,map.zoom,512,512,2,new ArrayList<>(),null,null);map.publishPreview(partial,partial);assertSame(completed,ready.get(map));map.cx+=1024.0/(1<<map.zoom);map.publishPreview(partial,partial);assertSame(partial,ready.get(map));}finally{map.close();}}
- @Test public void visibilityCacheSurvivesReopening(){Application app=RuntimeEnvironment.getApplication();RevealCache first=new RevealCache(app);double[] expected={1,2,3,4};first.begin();first.write("test-persistent",expected);first.end();first.close();RevealCache reopened=new RevealCache(app);try{assertArrayEquals(expected,reopened.read("test-persistent"),0);}finally{reopened.close();}}
- public static class TestDownload extends MapDownloadService {final CountDownLatch waiting=new CountDownLatch(1);@Override void progress(String text,int done,int total){if(text.contains("на паузе"))waiting.countDown();}}
- @Test public void pauseReallyBlocksOfflineHttpAndResumeContinuesOnSameJob()throws Exception{
- Application app=RuntimeEnvironment.getApplication();ServerSocket server=new ServerSocket(0,4,InetAddress.getByName("127.0.0.1"));server.setSoTimeout(10000);AtomicInteger requests=new AtomicInteger();AtomicReference<String> connectionHeader=new AtomicReference<>(),contentLength=new AtomicReference<>();AtomicInteger bodyBytes=new AtomicInteger();AtomicReference<Throwable> serverFailure=new AtomicReference<>();
- Thread serverThread=new Thread(()->{try{for(int request=0;request<2;request++)try(Socket socket=server.accept()){socket.setSoTimeout(10000);InputStream input=socket.getInputStream();ByteArrayOutputStream header=new ByteArrayOutputStream();String text="";while(header.size()<8192){int b=input.read();if(b<0)throw new EOFException();header.write(b);text=header.toString("ISO-8859-1");if(text.endsWith("\r\n\r\n"))break;}requests.incrementAndGet();int length=0;for(String line:text.split("\r\n")){if(line.toLowerCase(Locale.ROOT).startsWith("connection:"))connectionHeader.set(line.substring(line.indexOf(':')+1).trim());if(line.toLowerCase(Locale.ROOT).startsWith("content-length:")){contentLength.set(line.substring(line.indexOf(':')+1).trim());length=Integer.parseInt(contentLength.get());}}for(int i=0;i<length;i++){if(input.read()<0)throw new EOFException();}bodyBytes.set(length);byte[] response=request==0?"{\"elements\":[]}".getBytes("UTF-8"):new byte[]{1,2,3};OutputStream out=socket.getOutputStream();out.write(("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: "+(request==0?response.length:1000)+"\r\n\r\n").getBytes("ISO-8859-1"));out.write(response);out.flush();}}catch(Throwable failure){serverFailure.set(failure);}},"test-map-server");serverThread.setDaemon(true);serverThread.start();ExecutorService worker=Executors.newSingleThreadExecutor();org.robolectric.android.controller.ServiceController<TestDownload> controller=Robolectric.buildService(TestDownload.class).create();TestDownload service=controller.get();String base="http://127.0.0.1:"+server.getLocalPort();
- try{MapNetwork.setEnabled(app,false);Future<byte[]> future=worker.submit(()->service.fetch(base+"/map","[out:json];out;",10000));assertTrue(service.waiting.await(5,TimeUnit.SECONDS));assertFalse(future.isDone());assertEquals(0,requests.get());MapNetwork.setEnabled(app,true);assertEquals("{\"elements\":[]}",new String(future.get(10,TimeUnit.SECONDS),"UTF-8"));assertEquals(1,requests.get());assertEquals("close",connectionHeader.get());assertEquals(""+bodyBytes.get(),contentLength.get());try{service.fetch(base+"/cut",null,10000);fail("Truncated response must never become a ready map file");}catch(IOException expected){assertTrue(expected instanceof EOFException||expected.getMessage()!=null);}serverThread.join(5000);assertNull(serverFailure.get());}finally{MapNetwork.setEnabled(app,true);worker.shutdownNow();server.close();controller.destroy();}
- }
+    @Test
+    public void pausingCannotBlockUiOnASlowSocketClose() throws Exception {
+        Application app = RuntimeEnvironment.getApplication();
+        MapNetwork.setEnabled(app, true);
+        CountDownLatch closing = new CountDownLatch(1), release = new CountDownLatch(1);
+        HttpURLConnection socket =
+                new HttpURLConnection(new URL("http://127.0.0.1")) {
+                    public void connect() {}
+
+                    public boolean usingProxy() {
+                        return false;
+                    }
+
+                    public void disconnect() {
+                        closing.countDown();
+                        try {
+                            release.await(5, TimeUnit.SECONDS);
+                        } catch (InterruptedException interrupted) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                };
+        try {
+            MapNetwork.register(app, socket);
+            MapNetwork.setEnabled(app, false);
+            assertTrue(closing.await(5, TimeUnit.SECONDS));
+            assertFalse(MapNetwork.enabled(app));
+            try {
+                MapNetwork.register(app, socket);
+                fail("No new offline or live request may pass the paused gate");
+            } catch (MapNetwork.Paused expected) {
+            }
+        } finally {
+            release.countDown();
+            MapNetwork.setEnabled(app, true);
+        }
+    }
+
+    @Test
+    public void angularIndexMatchesExhaustiveRayIntersections() {
+        Random random = new Random(719);
+        for (int world = 0; world < 60; world++) {
+            ArrayList<double[]> buildings = new ArrayList<>();
+            for (int i = 0; i < 24; i++) {
+                double x = random.nextDouble() * 220 - 110,
+                        y = random.nextDouble() * 220 - 110,
+                        w = 1 + random.nextDouble() * 18,
+                        h = 1 + random.nextDouble() * 18;
+                buildings.add(
+                        new double[] {
+                            y / 111195.08,
+                            x / 111195.08,
+                            y / 111195.08,
+                            (x + w) / 111195.08,
+                            (y + h) / 111195.08,
+                            (x + w) / 111195.08,
+                            (y + h) / 111195.08,
+                            x / 111195.08,
+                            y / 111195.08,
+                            x / 111195.08
+                        });
+            }
+            assertArrayEquals(
+                    "World " + world,
+                    VisibilityReference.polygon(0, 0, 100, buildings),
+                    Visibility.polygon(0, 0, 100, buildings),
+                    1e-9);
+        }
+    }
+
+    @Test
+    public void denseStreetVisibilityBenchmarkKeepsExactResult() {
+        ArrayList<double[]> buildings = new ArrayList<>();
+        for (int row = -9; row <= 9; row++)
+            for (int col = -9; col <= 9; col++) {
+                if (Math.abs(row) < 2 && Math.abs(col) < 2) continue;
+                double x = col * 10, y = row * 10, k = 111195.08;
+                buildings.add(
+                        new double[] {
+                            y / k,
+                            x / k,
+                            y / k,
+                            (x + 6) / k,
+                            (y + 6) / k,
+                            (x + 6) / k,
+                            (y + 6) / k,
+                            x / k,
+                            y / k,
+                            x / k
+                        });
+            }
+        long start = System.nanoTime();
+        double[] reference = VisibilityReference.polygon(0, 0, 100, buildings);
+        long oldTime = System.nanoTime() - start;
+        start = System.nanoTime();
+        double[] indexed = Visibility.polygon(0, 0, 100, buildings);
+        long newTime = System.nanoTime() - start;
+        assertArrayEquals(reference, indexed, 1e-9);
+        System.out.println(
+                "Visibility dense street: exhaustive="
+                        + oldTime / 1000000.0
+                        + "ms indexed="
+                        + newTime / 1000000.0
+                        + "ms");
+    }
+
+    @Test
+    public void gpsNoiseDoesNotRecenterOrRestartVisibility() throws Exception {
+        MapView map = new MapView(RuntimeEnvironment.getApplication());
+        map.online = false;
+        map.layout(0, 0, 512, 512);
+        try {
+            Location l = new Location("gps");
+            l.setLatitude(55.748);
+            l.setLongitude(37.612);
+            l.setAccuracy(10);
+            map.setCurrent(l, true);
+            double x = map.cx, y = map.cy;
+            Field revision = MapView.class.getDeclaredField("revision");
+            revision.setAccessible(true);
+            long before = revision.getLong(map);
+            for (int i = 0; i < 40; i++) {
+                l.setLatitude(55.748 + (i % 2 == 0 ? 1 : -1) / 111195.08);
+                map.setCurrent(l, true);
+            }
+            assertEquals(x, map.cx, 0);
+            assertEquals(y, map.cy, 0);
+            assertEquals(before, revision.getLong(map));
+            l.setLatitude(55.748 + 40 / 111195.08);
+            map.setCurrent(l, true);
+            assertNotEquals(y, map.cy, 0);
+        } finally {
+            map.close();
+        }
+    }
+
+    @Test
+    public void partialRefreshCannotEraseCompletedHistory() throws Exception {
+        MapView map = new MapView(RuntimeEnvironment.getApplication());
+        map.layout(0, 0, 512, 512);
+        map.cx = 128;
+        map.cy = 128;
+        map.zoom = 16;
+        Field ready = MapView.class.getDeclaredField("readyFrame");
+        ready.setAccessible(true);
+        try {
+            RouteFrame completed =
+                    new RouteFrame(
+                            map.cx, map.cy, map.zoom, 512, 512, 1, new ArrayList<>(), null, null);
+            completed.complete = true;
+            ready.set(map, completed);
+            RouteFrame partial =
+                    new RouteFrame(
+                            map.cx, map.cy, map.zoom, 512, 512, 2, new ArrayList<>(), null, null);
+            map.publishPreview(partial, partial);
+            assertSame(completed, ready.get(map));
+            map.cx += 1024.0 / (1 << map.zoom);
+            map.publishPreview(partial, partial);
+            assertSame(partial, ready.get(map));
+        } finally {
+            map.close();
+        }
+    }
+
+    @Test
+    public void visibilityCacheSurvivesReopening() {
+        Application app = RuntimeEnvironment.getApplication();
+        RevealCache first = new RevealCache(app);
+        double[] expected = {1, 2, 3, 4};
+        first.begin();
+        first.write("test-persistent", expected);
+        first.end();
+        first.close();
+        RevealCache reopened = new RevealCache(app);
+        try {
+            assertArrayEquals(expected, reopened.read("test-persistent"), 0);
+        } finally {
+            reopened.close();
+        }
+    }
+
+    public static class TestDownload extends MapDownloadService {
+        final CountDownLatch waiting = new CountDownLatch(1);
+
+        @Override
+        void progress(String text, int done, int total) {
+            if (text.contains("на паузе")) waiting.countDown();
+        }
+    }
+
+    @Test
+    public void pauseReallyBlocksOfflineHttpAndResumeContinuesOnSameJob() throws Exception {
+        Application app = RuntimeEnvironment.getApplication();
+        ServerSocket server = new ServerSocket(0, 4, InetAddress.getByName("127.0.0.1"));
+        server.setSoTimeout(10000);
+        AtomicInteger requests = new AtomicInteger();
+        AtomicReference<String> connectionHeader = new AtomicReference<>(),
+                contentLength = new AtomicReference<>();
+        AtomicInteger bodyBytes = new AtomicInteger();
+        AtomicReference<Throwable> serverFailure = new AtomicReference<>();
+        Thread serverThread =
+                new Thread(
+                        () -> {
+                            try {
+                                for (int request = 0; request < 2; request++)
+                                    try (Socket socket = server.accept()) {
+                                        socket.setSoTimeout(10000);
+                                        InputStream input = socket.getInputStream();
+                                        ByteArrayOutputStream header = new ByteArrayOutputStream();
+                                        String text = "";
+                                        while (header.size() < 8192) {
+                                            int b = input.read();
+                                            if (b < 0) throw new EOFException();
+                                            header.write(b);
+                                            text = header.toString("ISO-8859-1");
+                                            if (text.endsWith("\r\n\r\n")) break;
+                                        }
+                                        requests.incrementAndGet();
+                                        int length = 0;
+                                        for (String line : text.split("\r\n")) {
+                                            if (line.toLowerCase(Locale.ROOT)
+                                                    .startsWith("connection:"))
+                                                connectionHeader.set(
+                                                        line.substring(line.indexOf(':') + 1)
+                                                                .trim());
+                                            if (line.toLowerCase(Locale.ROOT)
+                                                    .startsWith("content-length:")) {
+                                                contentLength.set(
+                                                        line.substring(line.indexOf(':') + 1)
+                                                                .trim());
+                                                length = Integer.parseInt(contentLength.get());
+                                            }
+                                        }
+                                        for (int i = 0; i < length; i++) {
+                                            if (input.read() < 0) throw new EOFException();
+                                        }
+                                        bodyBytes.set(length);
+                                        byte[] response =
+                                                request == 0
+                                                        ? "{\"elements\":[]}".getBytes("UTF-8")
+                                                        : new byte[] {1, 2, 3};
+                                        OutputStream out = socket.getOutputStream();
+                                        out.write(
+                                                ("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: "
+                                                                + (request == 0
+                                                                        ? response.length
+                                                                        : 1000)
+                                                                + "\r\n\r\n")
+                                                        .getBytes("ISO-8859-1"));
+                                        out.write(response);
+                                        out.flush();
+                                    }
+                            } catch (Throwable failure) {
+                                serverFailure.set(failure);
+                            }
+                        },
+                        "test-map-server");
+        serverThread.setDaemon(true);
+        serverThread.start();
+        ExecutorService worker = Executors.newSingleThreadExecutor();
+        org.robolectric.android.controller.ServiceController<TestDownload> controller =
+                Robolectric.buildService(TestDownload.class).create();
+        TestDownload service = controller.get();
+        String base = "http://127.0.0.1:" + server.getLocalPort();
+        try {
+            MapNetwork.setEnabled(app, false);
+            Future<byte[]> future =
+                    worker.submit(() -> service.fetch(base + "/map", "[out:json];out;", 10000));
+            assertTrue(service.waiting.await(5, TimeUnit.SECONDS));
+            assertFalse(future.isDone());
+            assertEquals(0, requests.get());
+            MapNetwork.setEnabled(app, true);
+            assertEquals(
+                    "{\"elements\":[]}", new String(future.get(10, TimeUnit.SECONDS), "UTF-8"));
+            assertEquals(1, requests.get());
+            assertEquals("close", connectionHeader.get());
+            assertEquals("" + bodyBytes.get(), contentLength.get());
+            try {
+                service.fetch(base + "/cut", null, 10000);
+                fail("Truncated response must never become a ready map file");
+            } catch (IOException expected) {
+                assertTrue(expected instanceof EOFException || expected.getMessage() != null);
+            }
+            serverThread.join(5000);
+            assertNull(serverFailure.get());
+        } finally {
+            MapNetwork.setEnabled(app, true);
+            worker.shutdownNow();
+            server.close();
+            controller.destroy();
+        }
+    }
 }

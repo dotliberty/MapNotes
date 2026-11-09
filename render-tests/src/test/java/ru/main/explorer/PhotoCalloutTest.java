@@ -1,9 +1,80 @@
 package ru.main.explorer;
-import org.junit.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.*;import android.app.*;import android.widget.*;import java.util.*;import static org.junit.Assert.*;
-@RunWith(RobolectricTestRunner.class) @Config(sdk=34)
+
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.robolectric.*;
+import org.robolectric.annotation.*;
+import android.app.*;
+import android.widget.*;
+import java.util.*;
+import static org.junit.Assert.*;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 34)
 public class PhotoCalloutTest {
- @Test public void exactCoincidentPointsRemainSeparateWithOriginalAnchors(){ArrayList<Store.Photo> p=new ArrayList<>();p.add(null);p.add(null);p.add(null);ArrayList<PhotoGroups.Group> groups=PhotoGroups.spread(p,new float[]{250,250,250},new float[]{250,250,250},50,500,500);assertEquals(3,groups.size());for(int i=0;i<3;i++){PhotoGroups.Group g=groups.get(i);assertEquals(1,g.photos.size());assertEquals(250,g.anchorX,0);assertEquals(250,g.anchorY,0);for(int j=0;j<i;j++)assertTrue(Math.abs(g.x-groups.get(j).x)>=58||Math.abs(g.y-groups.get(j).y)>=58);}}
- @Test public void isolatedEdgeCardStaysAtGps(){ArrayList<Store.Photo> p=new ArrayList<>();p.add(null);ArrayList<PhotoGroups.Group> g=PhotoGroups.spread(p,new float[]{1},new float[]{1},50,500,500);assertEquals(1,g.size());assertEquals(1,g.get(0).x,0);assertEquals(1,g.get(0).y,0);assertEquals(1,g.get(0).anchorX,0);}
- @Test public void isolatedCardsNeverMoveAndLayoutRepeats(){ArrayList<Store.Photo> p=new ArrayList<>(Arrays.asList(null,null,null));float[] xs={80,250,420},ys={80,250,420};ArrayList<PhotoGroups.Group> a=PhotoGroups.spread(p,xs,ys,50,500,500),b=PhotoGroups.spread(p,xs,ys,50,500,500);assertEquals(3,a.size());for(int i=0;i<3;i++){assertEquals(xs[i],a.get(i).x,0);assertEquals(ys[i],a.get(i).y,0);assertEquals(a.get(i).x,b.get(i).x,0);}}
- @Test public void atlasControlsHaveNativeSemanticsAndCustomBackground(){Application app=RuntimeEnvironment.getApplication();LinearLayout layout=new LinearLayout(app);Button b=new Button(app);b.setText("Сохранить в галерею");layout.addView(b);EditText note=new EditText(app);layout.addView(note);AtlasUi.apply(layout);assertTrue(b.getBackground() instanceof android.graphics.drawable.RippleDrawable);assertTrue(((android.graphics.drawable.RippleDrawable)b.getBackground()).getDrawable(0) instanceof android.graphics.drawable.GradientDrawable);assertEquals("Сохранить в галерею",b.getText().toString());assertEquals(AtlasUi.INK,note.getCurrentTextColor());}
+    @Test
+    public void exactCoincidentPointsRemainSeparateWithOriginalAnchors() {
+        ArrayList<Store.Photo> p = new ArrayList<>();
+        p.add(null);
+        p.add(null);
+        p.add(null);
+        ArrayList<PhotoGroups.Group> groups =
+                PhotoGroups.spread(
+                        p, new float[] {250, 250, 250}, new float[] {250, 250, 250}, 50, 500, 500);
+        assertEquals(3, groups.size());
+        for (int i = 0; i < 3; i++) {
+            PhotoGroups.Group g = groups.get(i);
+            assertEquals(1, g.photos.size());
+            assertEquals(250, g.anchorX, 0);
+            assertEquals(250, g.anchorY, 0);
+            for (int j = 0; j < i; j++)
+                assertTrue(
+                        Math.abs(g.x - groups.get(j).x) >= 58
+                                || Math.abs(g.y - groups.get(j).y) >= 58);
+        }
+    }
+
+    @Test
+    public void isolatedEdgeCardStaysAtGps() {
+        ArrayList<Store.Photo> p = new ArrayList<>();
+        p.add(null);
+        ArrayList<PhotoGroups.Group> g =
+                PhotoGroups.spread(p, new float[] {1}, new float[] {1}, 50, 500, 500);
+        assertEquals(1, g.size());
+        assertEquals(1, g.get(0).x, 0);
+        assertEquals(1, g.get(0).y, 0);
+        assertEquals(1, g.get(0).anchorX, 0);
+    }
+
+    @Test
+    public void isolatedCardsNeverMoveAndLayoutRepeats() {
+        ArrayList<Store.Photo> p = new ArrayList<>(Arrays.asList(null, null, null));
+        float[] xs = {80, 250, 420}, ys = {80, 250, 420};
+        ArrayList<PhotoGroups.Group> a = PhotoGroups.spread(p, xs, ys, 50, 500, 500),
+                b = PhotoGroups.spread(p, xs, ys, 50, 500, 500);
+        assertEquals(3, a.size());
+        for (int i = 0; i < 3; i++) {
+            assertEquals(xs[i], a.get(i).x, 0);
+            assertEquals(ys[i], a.get(i).y, 0);
+            assertEquals(a.get(i).x, b.get(i).x, 0);
+        }
+    }
+
+    @Test
+    public void atlasControlsHaveNativeSemanticsAndCustomBackground() {
+        Application app = RuntimeEnvironment.getApplication();
+        LinearLayout layout = new LinearLayout(app);
+        Button b = new Button(app);
+        b.setText("Сохранить в галерею");
+        layout.addView(b);
+        EditText note = new EditText(app);
+        layout.addView(note);
+        AtlasUi.apply(layout);
+        assertTrue(b.getBackground() instanceof android.graphics.drawable.RippleDrawable);
+        assertTrue(
+                ((android.graphics.drawable.RippleDrawable) b.getBackground()).getDrawable(0)
+                        instanceof android.graphics.drawable.GradientDrawable);
+        assertEquals("Сохранить в галерею", b.getText().toString());
+        assertEquals(AtlasUi.INK, note.getCurrentTextColor());
+    }
 }

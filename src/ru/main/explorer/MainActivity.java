@@ -1,95 +1,1116 @@
 package ru.main.explorer;
-import android.Manifest;import android.app.*;import android.content.*;import android.content.pm.PackageManager;import android.graphics.Color;import android.graphics.Typeface;import android.graphics.drawable.GradientDrawable;import android.os.*;import android.view.*;import android.widget.*;import android.database.*;import android.database.sqlite.*;import java.io.*;import java.net.*;import java.util.*;
+
+import android.Manifest;
+import android.app.*;
+import android.content.*;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.os.*;
+import android.view.*;
+import android.widget.*;
+import android.database.*;
+import android.database.sqlite.*;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 public class MainActivity extends Activity implements android.location.LocationListener {
- protected void attachBaseContext(Context base){super.attachBaseContext(Language.wrap(base));}
- private android.location.LocationManager locationManager;private GpsFilter liveFilter=new GpsFilter();private long foregroundSession=System.currentTimeMillis();private boolean watching=false;private String liveStatus=Messages.text("waiting_for_current_location");
- private final java.util.concurrent.ExecutorService dataWorker=java.util.concurrent.Executors.newSingleThreadExecutor();private boolean readingPoints,destroyed;private long lastPointId;private double walkedDistance;private final ArrayList<double[]> loadedPoints=new ArrayList<>();
- private android.location.Location lastDisplay;private boolean wasWalking;
- private Button onlineButton;private Button offlineButton;private TextView downloadStatus;private long seenGeneration=-1;
- private MapView map;private Store store;private TextView stats,status;private Button start;private final Handler handler=new Handler();private long count=-1;private boolean resumed=false;
- int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}
- TextView text(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextColor(color);t.setTextSize(size);return t;}
- Button button(String s){Button b=new Button(this);b.setText(s);b.setMaxLines(2);if(Build.VERSION.SDK_INT>=26)b.setAutoSizeTextTypeUniformWithConfiguration(11,14,1,android.util.TypedValue.COMPLEX_UNIT_SP);b.setMinWidth(0);b.setMinimumWidth(0);AtlasUi.styleButton(b,false);return b;}
- public void onCreate(Bundle b){super.onCreate(b);liveStatus=Language.text(this,R.string.waiting_for_current_location);CrashReport.install(this);getWindow().setStatusBarColor(0xff30394b);getWindow().setNavigationBarColor(0xff30394b);store=new Store(this);
-  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(0xff30394b);root.setPadding(0,0,0,0);setContentView(root);
-  if(Build.VERSION.SDK_INT>=35)root.setOnApplyWindowInsetsListener((v,in)->{android.graphics.Insets bars=in.getInsets(WindowInsets.Type.systemBars());v.setPadding(bars.left,bars.top,bars.right,bars.bottom);return in;});
-  LinearLayout head=new LinearLayout(this);head.setOrientation(1);head.setPadding(dp(20),dp(10),dp(20),dp(10));root.addView(head);
-  TextView eyebrow=text("◇  "+Language.text(this,R.string.atlas_title),10,AtlasUi.GOLD);eyebrow.setLetterSpacing(.18f);head.addView(eyebrow);TextView title=text("MapNotes",28,AtlasUi.CREAM);title.setTypeface(Typeface.create("serif",Typeface.NORMAL));head.addView(title);stats=text(Language.text(this,R.string.walk_hint),12,AtlasUi.MUTED);head.addView(stats);View rule=new View(this);rule.setBackgroundColor(0xff756d5d);LinearLayout.LayoutParams ruleParams=new LinearLayout.LayoutParams(-1,dp(1));ruleParams.topMargin=dp(10);head.addView(rule,ruleParams);
-  FrameLayout frame=new FrameLayout(this);root.addView(frame,new LinearLayout.LayoutParams(-1,0,1));map=new MapView(this,true);frame.addView(map,new FrameLayout.LayoutParams(-1,-1));map.setPhotoTapListener(this::showPhotos);LinearLayout photoActions=new LinearLayout(this);Button take=button(Language.text(this,R.string.take_photo)),gallery=button(Language.text(this,R.string.my_photos));photoActions.addView(take,new LinearLayout.LayoutParams(dp(96),dp(48)));LinearLayout.LayoutParams gap=new LinearLayout.LayoutParams(dp(106),dp(48));gap.leftMargin=dp(8);photoActions.addView(gallery,gap);FrameLayout.LayoutParams photoPosition=new FrameLayout.LayoutParams(-2,dp(48),Gravity.TOP|Gravity.LEFT);photoPosition.topMargin=dp(10);photoPosition.leftMargin=dp(10);frame.addView(photoActions,photoPosition);onlineButton=button(map.online?Language.text(this,R.string.network_on):Language.text(this,R.string.network_off));FrameLayout.LayoutParams networkPosition=new FrameLayout.LayoutParams(dp(112),dp(48),Gravity.BOTTOM|Gravity.RIGHT);networkPosition.rightMargin=dp(14);networkPosition.bottomMargin=dp(50);frame.addView(onlineButton,networkPosition);onlineButton.setOnClickListener(v->{map.toggleOnline();onlineButton.setText(Language.text(this,map.online?"network_on":"network_off"));});take.setOnClickListener(v->takePhoto());gallery.setOnClickListener(v->showPhotos(store.photos(),v));
-  LinearLayout controls=new LinearLayout(this);controls.setOrientation(1);String[] names={"+","−","◎","⋯"};for(int i=0;i<names.length;i++){Button c=button(names[i]);c.setContentDescription(Language.text(this,new int[]{R.string.zoom_in,R.string.zoom_out,R.string.my_location,R.string.map_options}[i]));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(48),dp(48));p.bottomMargin=dp(8);controls.addView(c,p);final int action=i;c.setOnClickListener(v->{if(action<2)map.changeZoom(action==0?1:-1);else if(action==2){watchLocation();map.locate();}else menu(v);});}FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(dp(48),-2,Gravity.RIGHT|Gravity.CENTER_VERTICAL);cp.rightMargin=dp(14);frame.addView(controls,cp);
-  LinearLayout footer=new LinearLayout(this);footer.setOrientation(1);footer.setPadding(dp(16),dp(10),dp(16),dp(12));root.addView(footer);status=text(Language.text(this,R.string.start_hint),13,0xfff2eadb);footer.addView(status);TextView hint=text(Language.text(this,R.string.explore_hint),12,0xffc0b59f);hint.setPadding(0,dp(5),0,dp(12));footer.addView(hint);offlineButton=button(Language.text(this,R.string.download_area));footer.addView(offlineButton,new LinearLayout.LayoutParams(-1,dp(44)));offlineButton.setOnClickListener(v->downloadArea());downloadStatus=text(Language.text(this,R.string.offline_hint),11,0xffd2c9b7);downloadStatus.setPadding(0,dp(5),0,dp(8));footer.addView(downloadStatus);start=button(Language.text(this,R.string.start_walk));footer.addView(start,new LinearLayout.LayoutParams(-1,dp(52)));start.setOnClickListener(v->{if(WalkService.running){store.finishWalk(System.currentTimeMillis());stopService(new Intent(this,WalkService.class));foregroundSession=System.currentTimeMillis();liveFilter=new GpsFilter();refresh();}else if(store.openWalk()!=null){new AtlasUi.DialogBuilder(this,start).setTitle(Language.text(this,R.string.unfinished_walk)).setMessage(Language.text(this,R.string.recording_was_interrupted_total_time_includes_the_break_the_route)).setPositiveButton(Language.text(this,R.string.resume),(d,w)->begin()).setNegativeButton(Language.text(this,R.string.finish_now),(d,w)->{store.finishWalk(System.currentTimeMillis());refresh();}).show();}else begin();});
-  hint.setVisibility(View.GONE);downloadStatus.setMaxLines(2);status.setMaxLines(3);AtlasUi.styleButton(start,true);LinearLayout.LayoutParams primaryParams=(LinearLayout.LayoutParams)start.getLayoutParams();primaryParams.topMargin=dp(6);start.setLayoutParams(primaryParams);footer.setBackground(AtlasUi.panel(AtlasUi.INK,0xff756d5d,dp(18)));
-  View.OnClickListener details=v->new AtlasUi.DialogBuilder(this,v).setTitle(Language.text(this,R.string.atlas_title)).setMessage(status.getText()+"\n\n"+downloadStatus.getText()+"\n\n"+Language.text(this,R.string.explore_hint)).setPositiveButton(Language.text(this,R.string.close),null).show();status.setOnClickListener(details);status.setFocusable(true);downloadStatus.setOnClickListener(details);downloadStatus.setFocusable(true);
-  footer.removeView(offlineButton);LinearLayout secondary=new LinearLayout(this);LinearLayout.LayoutParams secondaryParams=new LinearLayout.LayoutParams(-1,dp(48));secondaryParams.topMargin=dp(8);footer.addView(secondary,secondaryParams);secondary.addView(offlineButton,new LinearLayout.LayoutParams(0,-1,1));Button timeline=button(Language.text(this,R.string.walk_history));LinearLayout.LayoutParams historyParams=new LinearLayout.LayoutParams(0,-1,1);historyParams.leftMargin=dp(8);secondary.addView(timeline,historyParams);timeline.setOnClickListener(v->showWalks(v));
-  if(getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE){root.removeView(head);root.removeView(footer);root.setOrientation(LinearLayout.HORIZONTAL);frame.setLayoutParams(new LinearLayout.LayoutParams(0,-1,1));networkPosition.gravity=Gravity.BOTTOM|Gravity.LEFT;networkPosition.leftMargin=dp(14);networkPosition.bottomMargin=dp(80);onlineButton.setLayoutParams(networkPosition);LinearLayout side=new LinearLayout(this);side.setOrientation(1);side.addView(head);side.addView(footer);ScrollView sideScroll=new ScrollView(this);sideScroll.setFillViewport(true);sideScroll.addView(side);root.addView(sideScroll,new LinearLayout.LayoutParams(dp(260),-1));}
-  // Keep the network toggle clear of the right-hand map actions in both orientations.
-  networkPosition.gravity=Gravity.BOTTOM|Gravity.LEFT;networkPosition.leftMargin=dp(14);onlineButton.setLayoutParams(networkPosition);
-  if(!getPreferences(0).getBoolean("intro",false)){new AtlasUi.DialogBuilder(this).setTitle(Language.text(this,R.string.the_world_awaits_your_footsteps)).setMessage(Language.text(this,R.string.start_a_walk_and_allow_precise_location_the_map_is_revealed_in_a_)).setPositiveButton(Language.text(this,R.string.got_it),(d,w)->getPreferences(0).edit().putBoolean("intro",true).apply()).show();}
- }
- void showWalks(){showWalks(null);}void showWalks(View anchor){
-  ArrayList<Store.Walk> walks=store.walks();if(walks.isEmpty()){toast(Language.text(this,R.string.no_walks_yet_earlier_locations_and_photos_are_kept_separately_wit));return;}
-  String[] labels=new String[walks.size()];for(int i=0;i<labels.length;i++)labels[i]=walkLabel(walks.get(i));new AtlasUi.DialogBuilder(this,anchor).setTitle(Language.text(this,R.string.walk_history)).setItems(labels,(d,i)->showWalk(walks.get(i))).setNegativeButton(Language.text(this,R.string.close),null).show();
- }
- String walkLabel(Store.Walk w){return Language.format(this,R.string.walk_label,w.id,Language.date(this,w.started),w.ended==0?Language.text(this,R.string.unfinished):"");}
- void showWalk(Store.Walk w){
-  // Read one walk off the UI thread, just like the main route reader.
-  dataWorker.execute(()->{ArrayList<double[]> route=store.walkPoints(w.id);ArrayList<Store.Photo> photos=store.walkPhotos(w,System.currentTimeMillis());double km=Store.distance(route)/1000;long seconds=w.elapsed(System.currentTimeMillis())/1000;handler.post(()->{if(destroyed)return;LinearLayout body=new LinearLayout(this);body.setOrientation(1);body.setPadding(dp(16),dp(8),dp(16),dp(8));TextView summary=text(String.format(Language.locale(this),Language.text(this,R.string.km_total_time_h_min_s_nincludes_breaks_and_waiting_for_gps_photos),km,seconds/3600,seconds/60%60,seconds%60,photos.size()),15,Color.WHITE);body.addView(summary);Button place=button(Language.text(this,R.string.show_walk_location_on_map));place.setEnabled(!route.isEmpty());body.addView(place);place.setOnClickListener(v->{double[] p=route.get(0);map.showPlace(p[0],p[1]);});for(Store.Photo photo:photos){Button b=button(Language.text(this,R.string.photo)+photo.id+" · "+new java.text.SimpleDateFormat("HH:mm:ss",Language.locale(this)).format(new Date(photo.created)));body.addView(b);b.setOnClickListener(v->startActivity(new Intent(this,PhotoActivity.class).putExtra("id",photo.id)));}ScrollView scroll=new ScrollView(this);scroll.addView(body);new AtlasUi.DialogBuilder(this).setTitle(walkLabel(w)).setView(scroll).setPositiveButton(Language.text(this,R.string.back_to_map),(d,i)->{if(!route.isEmpty()){double[] p=route.get(0);map.showPlace(p[0],p[1]);}}).setNegativeButton(Language.text(this,R.string.close),null).show();});});
- }
- void begin(){if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},7);return;}if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},8);try{startForegroundService(new Intent(this,WalkService.class));}catch(Exception e){status.setText(Language.text(this,R.string.could_not_start_gps)+e.getMessage());}}
- public void onRequestPermissionsResult(int r,String[] p,int[] g){super.onRequestPermissionsResult(r,p,g);if(r==12){if(checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED&&checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED)takePhoto();else toast(Language.text(this,R.string.camera_and_location_access_are_required_for_geotagged_photos));}if(r==9){if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED)watchLocation();else liveStatus=Language.text(this,R.string.allow_precise_location_in_app_settings);}if(r==7){if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED){watchLocation();begin();}else new AtlasUi.DialogBuilder(this).setMessage(Language.text(this,R.string.precise_location_is_needed_to_reveal_small_areas_enable_it_in_app)).setPositiveButton(Language.text(this,R.string.open_settings),(d,w)->startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName())))).setNegativeButton(Language.text(this,R.string.later),null).show();}}
- final Runnable tick=new Runnable(){public void run(){if(resumed){refresh();handler.postDelayed(this,1000);}}};
- private Boolean motionWalking;
- void refresh(){boolean walking=WalkService.running;if(motionWalking!=null&&motionWalking!=walking){AtlasMotion.stateChange(start,walking);AtlasMotion.stateChange(stats,walking);}motionWalking=walking;if(onlineButton!=null)onlineButton.setText(Language.text(this,map.online?"network_on":"network_off"));if(MapDownloadService.generation!=seenGeneration){seenGeneration=MapDownloadService.generation;map.reloadRegions();}offlineButton.setText(Language.text(this,MapDownloadService.running?"downloading":MapDownloadService.hasPending(this)?"resume_download":"download_area"));downloadStatus.setText(MapDownloadService.currentStatus(this).isEmpty()?Language.text(this,R.string.saved_offline_areas)+map.savedRegionCount():MapDownloadService.currentStatus(this));readNewPoints();if(!MapDownloadService.running&&!map.worldDescription().isEmpty())downloadStatus.setText(map.worldDescription());status.setText((WalkService.running?WalkService.currentStatus(this):liveStatus)+"\n"+map.satelliteStatus());start.setText(Language.text(this,WalkService.running?"finish_walk":store.openWalk()!=null?"resume_walk":"start_walk"));}
- void readNewPoints(){if(readingPoints||destroyed)return;readingPoints=true;dataWorker.execute(()->{ArrayList<double[]> snapshot=null;double distance=0;try{if(store.latestPointId()>lastPointId){Store.PointPage page=store.pointsAfter(lastPointId,5000);for(double[] point:page.points){if(!loadedPoints.isEmpty()){double[] previous=loadedPoints.get(loadedPoints.size()-1);if(MapView.connects(previous,point)&&point[3]>previous[3]){double meters=GpsFilter.distance(previous[0],previous[1],point[0],point[1]);if(meters/((point[3]-previous[3])/1000.0)<=4.5)walkedDistance+=meters;}}loadedPoints.add(point);}lastPointId=page.lastId;snapshot=new ArrayList<>(loadedPoints);distance=walkedDistance;}}catch(Exception failure){android.util.Log.e("MapNotes","Route read failed",failure);}final ArrayList<double[]> result=snapshot;final double km=distance/1000;handler.post(()->{readingPoints=false;if(!destroyed&&result!=null){count=result.size();map.update(result);stats.setText(String.format(Language.locale(this),Language.text(this,R.string.km_walked_route_points),km,result.size()));readNewPoints();}});});}
- protected void onResume(){super.onResume();if(getIntent().hasExtra("mapLat")){map.showPlace(getIntent().getDoubleExtra("mapLat",0),getIntent().getDoubleExtra("mapLon",0));getIntent().removeExtra("mapLat");}resumed=true;watchLocation();map.setPhotos(store.photos());handler.post(tick);}
- protected void onPause(){resumed=false;handler.removeCallbacks(tick);if(locationManager!=null)locationManager.removeUpdates(this);watching=false;super.onPause();}
- void watchLocation(){
-  if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){if(!getPreferences(0).getBoolean("locationAsked",false)){getPreferences(0).edit().putBoolean("locationAsked",true).apply();requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},9);}return;}
-  if(watching)return;
-  if(locationManager==null)locationManager=(android.location.LocationManager)getSystemService(LOCATION_SERVICE);
-  liveFilter=new GpsFilter();foregroundSession=System.currentTimeMillis();
-  try{locationManager.requestLocationUpdates(android.location.LocationManager.GPS_PROVIDER,1000,0,this);watching=true;liveStatus=locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)?Language.text(this,R.string.finding_current_gps_location):Language.text(this,R.string.enable_gps_in_device_settings);if(locationManager.getAllProviders().contains(android.location.LocationManager.NETWORK_PROVIDER))locationManager.requestLocationUpdates(android.location.LocationManager.NETWORK_PROVIDER,1000,0,this);}catch(Exception e){liveStatus=Language.text(this,R.string.could_not_get_gps_location)+e.getMessage();}
- }
- public void onLocationChanged(android.location.Location l){
-  if(wasWalking!=WalkService.running){wasWalking=WalkService.running;foregroundSession=System.currentTimeMillis();liveFilter=new GpsFilter();}
-  if(!l.hasAccuracy()||l.isFromMockProvider()||(l.hasSpeed()&&l.getSpeed()>4.5f))return;
-  long age=SystemClock.elapsedRealtimeNanos()-l.getElapsedRealtimeNanos();
-  if(age< -1000000000L||age>15000000000L||!Double.isFinite(l.getLatitude())||!Double.isFinite(l.getLongitude())||Math.abs(l.getLatitude())>85.05112878||Math.abs(l.getLongitude())>180)return;
-  if(l.getAccuracy()>30&&l.getAccuracy()<=1000){
-   if(lastDisplay!=null){double dt=(l.getElapsedRealtimeNanos()-lastDisplay.getElapsedRealtimeNanos())/1e9;if(dt<=0||(dt<10&&lastDisplay.getAccuracy()<l.getAccuracy()))return;double d=l.distanceTo(lastDisplay);if(d>lastDisplay.getAccuracy()+l.getAccuracy()+dt*4.5)return;}
-   lastDisplay=new android.location.Location(l);map.setCurrent(l,false);liveStatus=Language.text(this,R.string.approximate_location)+Math.round(l.getAccuracy())+Language.text(this,R.string.m_waiting_for_precise_gps_to_reveal_the_map);refresh();return;
-  }
-  String why=liveFilter.accept(new GpsFilter.Fix(l.getLatitude(),l.getLongitude(),l.getAccuracy(),l.getElapsedRealtimeNanos(),l.isFromMockProvider()),SystemClock.elapsedRealtimeNanos());
-  if(why!=null){liveStatus=Language.text(this,why);return;}
-  lastDisplay=new android.location.Location(l);map.setCurrent(l);liveStatus=Language.text(this,R.string.you_are_here_gps)+Math.round(l.getAccuracy())+Language.text(this,R.string.m_reveal_up_to_100_m);
-  if(!WalkService.running){try{store.add(l,foregroundSession);}catch(Exception e){liveStatus=Language.text(this,R.string.could_not_save_location);}}
-  refresh();
- }
- public void onProviderDisabled(String p){liveStatus=Language.text(this,R.string.enable_gps_in_device_settings);}
- public void onProviderEnabled(String p){liveStatus=Language.text(this,R.string.finding_current_gps_location);}
- public void onStatusChanged(String p,int s,Bundle b){}
- protected void onDestroy(){destroyed=true;dataWorker.shutdownNow();map.close();store.close();super.onDestroy();}
- void menu(){menu(null);}void menu(View anchor){String[] choices={Language.text(this,R.string.connect_map),Language.text(this,R.string.download_link),map.online?Language.text(this,R.string.disable_layer):Language.text(this,R.string.enable_layer),map.illustrated?Language.text(this,R.string.satellite_layer):Language.text(this,R.string.atlas_layer),Language.text(this,R.string.about),Language.text(this,R.string.crash_report),Language.text(this,R.string.map_sources),Language.text(this,R.string.disconnect_map),Language.text(this,"language"),Language.text(this,"imagery_title")};new AtlasUi.DialogBuilder(this,anchor).setTitle(Language.text(this,"map_menu")).setItems(choices,(d,w)->{if(w==0){chooseWorldMap();}else if(w==1)download();else if(w==2){map.toggleOnline();}else if(w==3){map.illustrated=!map.illustrated;map.invalidate();}else if(w==5)CrashReport.show(this);else if(w==6)MapImport.catalog(this);else if(w==7)map.disconnectWorld();else if(w==8)Language.show(this);else if(w==9)startActivity(new Intent(this,ImageryTraceActivity.class).putExtra("latitude",map.centerLatitude()).putExtra("longitude",map.centerLongitude()).putExtra("zoom",map.zoom));else new AtlasUi.DialogBuilder(this).setTitle("MapNotes · "+Language.version(this)).setMessage(Language.text(this,R.string.gps_accuracy_within_30_m_speed_up_to_4_5_m_s_with_additional_accu)).setPositiveButton(Language.text(this,R.string.close),null).show();}).show();}
- void download(){EditText url=new EditText(this);url.setHint("https://…/region.mbtiles");url.setInputType(17);new AtlasUi.DialogBuilder(this).setTitle(Language.text(this,R.string.download_map_to_phone)).setMessage(Language.text(this,R.string.paste_a_direct_https_link_to_mbtiles_for_a_large_planet_file_use_)).setView(url).setPositiveButton(Language.text(this,R.string.download),(d,w)->{String s=url.getText().toString().trim();if(!s.startsWith("https://")){toast(Language.text(this,R.string.an_https_link_is_required));return;}importMap(()->{HttpURLConnection h=(HttpURLConnection)new URL(s).openConnection();h.setConnectTimeout(15000);h.setReadTimeout(30000);if(h.getResponseCode()!=200){h.disconnect();throw new IOException(Language.text(this,R.string.http_error));}return new FilterInputStream(h.getInputStream()){public void close()throws IOException{super.close();h.disconnect();}};});}).setNegativeButton(Language.text(this,R.string.cancel),null).show();}
- void chooseWorldMap(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("*/*");i.addCategory(Intent.CATEGORY_OPENABLE);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);startActivityForResult(i,11);}
- void mapConnected(String description){map.illustrated=true;map.openOffline();toast(Language.text(this,R.string.connected)+description);}
- interface InputFactory{InputStream open()throws Exception;}
- protected void onActivityResult(int r,int result,Intent data){super.onActivityResult(r,result,data);if(r==11&&result==RESULT_OK&&data!=null){android.net.Uri uri=data.getData();if(uri==null)return;try{getContentResolver().takePersistableUriPermission(uri,data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException unavailable){}MapImport.connect(this,uri);}}
- void importMap(InputFactory factory){MapImport.copy(this,factory::open);}
- void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
- View photoLaunchButton(View view){if(view instanceof Button&&Language.text(this,R.string.take_photo).contentEquals(((Button)view).getText()))return view;if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++){View found=photoLaunchButton(group.getChildAt(i));if(found!=null)return found;}}return null;}
- void takePhoto(){if(checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.CAMERA,Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},12);return;}Intent intent=new Intent(this,CameraActivity.class);if(lastDisplay!=null)intent.putExtra("location",lastDisplay);View anchor=photoLaunchButton(getWindow().getDecorView());if(anchor!=null){int[] xy=new int[2];anchor.getLocationOnScreen(xy);intent.putExtra("cameraOrigin",new int[]{xy[0],xy[1],anchor.getWidth(),anchor.getHeight()});}startActivity(intent);overridePendingTransition(0,0);}
- void showPhotos(ArrayList<Store.Photo> photos){showPhotos(photos,null);}void showPhotos(ArrayList<Store.Photo> photos,View anchor){if(photos.isEmpty()){toast(Language.text(this,R.string.no_photos_yet_tap_photo_on_the_map));return;}PhotoChooser.show(this,photos,anchor);}
- void downloadArea(){
-  if(MapDownloadService.running){new AtlasUi.DialogBuilder(this,offlineButton).setTitle(Language.text(this,R.string.map_download_in_progress)).setMessage(MapDownloadService.currentStatus(this)).setPositiveButton(Language.text(this,R.string.continue_download),null).setNegativeButton(Language.text(this,R.string.pause),(d,w)->startService(new Intent(this,MapDownloadService.class).setAction("CANCEL"))).show();return;}
-  if(MapDownloadService.hasPending(this)){new AtlasUi.DialogBuilder(this,offlineButton).setTitle(Language.text(this,R.string.unfinished_download_saved)).setMessage(Language.text(this,R.string.completed_sections_are_already_on_your_phone_resume_where_you_lef)).setPositiveButton(Language.text(this,R.string.resume),(d,w)->{try{startForegroundService(MapDownloadService.resumeIntent(this));}catch(Exception e){toast(e.getMessage());}}).setNeutralButton(Language.text(this,R.string.another_area),(d,w)->selectArea()).setNegativeButton(Language.text(this,R.string.close),null).show();return;}
-  selectArea();
- }
- void selectArea(){new AtlasUi.DialogBuilder(this,offlineButton).setTitle(Language.text(this,R.string.what_would_you_like_to_save_offline)).setItems(new String[]{Language.text(this,R.string.atlas_streets_and_buildings_faster),Language.text(this,R.string.atlas_and_satellite_imagery)},(d,i)->selectAreaSize(i==1)).setNegativeButton(Language.text(this,R.string.cancel),null).show();}
- void selectAreaSize(boolean satellite){
-  if(map.zoom<11){toast(Language.text(this,R.string.wait_for_a_gps_location_or_zoom_in_on_the_area_you_want));return;}
-  double lat=map.centerLatitude(),lon=map.centerLongitude();int[] selected={1};String[] sizes={Language.text(this,R.string.text_1_1_km),Language.text(this,R.string.text_4_4_km),Language.text(this,R.string.text_20_20_km),Language.text(this,R.string.text_50_50_km),Language.text(this,R.string.text_100_100_km_for_long_walks)};
-  new AtlasUi.DialogBuilder(this).setTitle(Language.text(this,R.string.area_around_map_centre)).setSingleChoiceItems(sizes,1,(d,i)->selected[0]=i).setPositiveButton(Language.text(this,R.string.download),(d,i)->{try{double radius=new double[]{500,2000,10000,25000,50000}[selected[0]];RegionPlan plan=new RegionPlan(lat,lon,radius);long mb=plan.estimatedBytes()/1024/1024;new AtlasUi.DialogBuilder(this).setTitle(sizes[selected[0]]).setMessage((satellite?Language.text(this,R.string.save_atlas_and_satellite_imagery_estimated_total_about)+mb+Language.text(this,R.string.mb):Language.text(this,R.string.save_streets_buildings_and_water_satellite_imagery_is_excluded_si))+Language.text(this,R.string.a_large_area_may_take_several_hours_try_1_4_km_first_downloads_ca)).setPositiveButton(Language.text(this,R.string.start_download),(dd,w)->{try{if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},8);startForegroundService(new Intent(this,MapDownloadService.class).putExtra("lat",lat).putExtra("lon",lon).putExtra("radius",radius).putExtra("satellite",satellite));downloadStatus.setText(Language.text(this,R.string.starting_download));}catch(Exception e){toast(e.getMessage());}}).setNegativeButton(Language.text(this,R.string.cancel),null).show();}catch(Exception e){toast(e.getMessage());}}).setNegativeButton(Language.text(this,R.string.cancel),null).show();
- }
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(Language.wrap(base));
+    }
+
+    private android.location.LocationManager locationManager;
+    private GpsFilter liveFilter = new GpsFilter();
+    private long foregroundSession = System.currentTimeMillis();
+    private boolean watching = false;
+    private String liveStatus = Messages.text("waiting_for_current_location");
+    private final java.util.concurrent.ExecutorService dataWorker =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
+    private boolean readingPoints, destroyed;
+    private long lastPointId;
+    private double walkedDistance;
+    private final ArrayList<double[]> loadedPoints = new ArrayList<>();
+    private android.location.Location lastDisplay;
+    private boolean wasWalking;
+    private Button onlineButton;
+    private Button offlineButton;
+    private TextView downloadStatus;
+    private long seenGeneration = -1;
+    private MapView map;
+    private Store store;
+    private TextView stats, status;
+    private Button start;
+    private final Handler handler = new Handler();
+    private long count = -1;
+    private boolean resumed = false;
+
+    int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    TextView text(String s, int size, int color) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextColor(color);
+        t.setTextSize(size);
+        return t;
+    }
+
+    Button button(String s) {
+        Button b = new Button(this);
+        b.setText(s);
+        b.setMaxLines(2);
+        if (Build.VERSION.SDK_INT >= 26)
+            b.setAutoSizeTextTypeUniformWithConfiguration(
+                    11, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
+        b.setMinWidth(0);
+        b.setMinimumWidth(0);
+        AtlasUi.styleButton(b, false);
+        return b;
+    }
+
+    public void onCreate(Bundle b) {
+        super.onCreate(b);
+        liveStatus = Language.text(this, R.string.waiting_for_current_location);
+        CrashReport.install(this);
+        getWindow().setStatusBarColor(0xff30394b);
+        getWindow().setNavigationBarColor(0xff30394b);
+        store = new Store(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(1);
+        root.setBackgroundColor(0xff30394b);
+        root.setPadding(0, 0, 0, 0);
+        setContentView(root);
+        if (Build.VERSION.SDK_INT >= 35)
+            root.setOnApplyWindowInsetsListener(
+                    (v, in) -> {
+                        android.graphics.Insets bars = in.getInsets(WindowInsets.Type.systemBars());
+                        v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                        return in;
+                    });
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(1);
+        head.setPadding(dp(20), dp(10), dp(20), dp(10));
+        root.addView(head);
+        TextView eyebrow =
+                text("◇  " + Language.text(this, R.string.atlas_title), 10, AtlasUi.GOLD);
+        eyebrow.setLetterSpacing(.18f);
+        head.addView(eyebrow);
+        TextView title = text("MapNotes", 28, AtlasUi.CREAM);
+        title.setTypeface(Typeface.create("serif", Typeface.NORMAL));
+        head.addView(title);
+        stats = text(Language.text(this, R.string.walk_hint), 12, AtlasUi.MUTED);
+        head.addView(stats);
+        View rule = new View(this);
+        rule.setBackgroundColor(0xff756d5d);
+        LinearLayout.LayoutParams ruleParams = new LinearLayout.LayoutParams(-1, dp(1));
+        ruleParams.topMargin = dp(10);
+        head.addView(rule, ruleParams);
+        FrameLayout frame = new FrameLayout(this);
+        root.addView(frame, new LinearLayout.LayoutParams(-1, 0, 1));
+        map = new MapView(this, true);
+        frame.addView(map, new FrameLayout.LayoutParams(-1, -1));
+        map.setPhotoTapListener(this::showPhotos);
+        LinearLayout photoActions = new LinearLayout(this);
+        Button take = button(Language.text(this, R.string.take_photo)),
+                gallery = button(Language.text(this, R.string.my_photos));
+        photoActions.addView(take, new LinearLayout.LayoutParams(dp(96), dp(48)));
+        LinearLayout.LayoutParams gap = new LinearLayout.LayoutParams(dp(106), dp(48));
+        gap.leftMargin = dp(8);
+        photoActions.addView(gallery, gap);
+        FrameLayout.LayoutParams photoPosition =
+                new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.LEFT);
+        photoPosition.topMargin = dp(10);
+        photoPosition.leftMargin = dp(10);
+        frame.addView(photoActions, photoPosition);
+        onlineButton =
+                button(
+                        map.online
+                                ? Language.text(this, R.string.network_on)
+                                : Language.text(this, R.string.network_off));
+        FrameLayout.LayoutParams networkPosition =
+                new FrameLayout.LayoutParams(dp(112), dp(48), Gravity.BOTTOM | Gravity.RIGHT);
+        networkPosition.rightMargin = dp(14);
+        networkPosition.bottomMargin = dp(50);
+        frame.addView(onlineButton, networkPosition);
+        onlineButton.setOnClickListener(
+                v -> {
+                    map.toggleOnline();
+                    onlineButton.setText(
+                            Language.text(this, map.online ? "network_on" : "network_off"));
+                });
+        take.setOnClickListener(v -> takePhoto());
+        gallery.setOnClickListener(v -> showPhotos(store.photos(), v));
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(1);
+        String[] names = {"+", "−", "◎", "⋯"};
+        for (int i = 0; i < names.length; i++) {
+            Button c = button(names[i]);
+            c.setContentDescription(
+                    Language.text(
+                            this,
+                            new int[] {
+                                        R.string.zoom_in,
+                                        R.string.zoom_out,
+                                        R.string.my_location,
+                                        R.string.map_options
+                                    }
+                                    [i]));
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(dp(48), dp(48));
+            p.bottomMargin = dp(8);
+            controls.addView(c, p);
+            final int action = i;
+            c.setOnClickListener(
+                    v -> {
+                        if (action < 2) map.changeZoom(action == 0 ? 1 : -1);
+                        else if (action == 2) {
+                            watchLocation();
+                            map.locate();
+                        } else menu(v);
+                    });
+        }
+        FrameLayout.LayoutParams cp =
+                new FrameLayout.LayoutParams(dp(48), -2, Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        cp.rightMargin = dp(14);
+        frame.addView(controls, cp);
+        LinearLayout footer = new LinearLayout(this);
+        footer.setOrientation(1);
+        footer.setPadding(dp(16), dp(10), dp(16), dp(12));
+        root.addView(footer);
+        status = text(Language.text(this, R.string.start_hint), 13, 0xfff2eadb);
+        footer.addView(status);
+        TextView hint = text(Language.text(this, R.string.explore_hint), 12, 0xffc0b59f);
+        hint.setPadding(0, dp(5), 0, dp(12));
+        footer.addView(hint);
+        offlineButton = button(Language.text(this, R.string.download_area));
+        footer.addView(offlineButton, new LinearLayout.LayoutParams(-1, dp(44)));
+        offlineButton.setOnClickListener(v -> downloadArea());
+        downloadStatus = text(Language.text(this, R.string.offline_hint), 11, 0xffd2c9b7);
+        downloadStatus.setPadding(0, dp(5), 0, dp(8));
+        footer.addView(downloadStatus);
+        start = button(Language.text(this, R.string.start_walk));
+        footer.addView(start, new LinearLayout.LayoutParams(-1, dp(52)));
+        start.setOnClickListener(
+                v -> {
+                    if (WalkService.running) {
+                        store.finishWalk(System.currentTimeMillis());
+                        stopService(new Intent(this, WalkService.class));
+                        foregroundSession = System.currentTimeMillis();
+                        liveFilter = new GpsFilter();
+                        refresh();
+                    } else if (store.openWalk() != null) {
+                        new AtlasUi.DialogBuilder(this, start)
+                                .setTitle(Language.text(this, R.string.unfinished_walk))
+                                .setMessage(
+                                        Language.text(
+                                                this,
+                                                R.string
+                                                        .recording_was_interrupted_total_time_includes_the_break_the_route))
+                                .setPositiveButton(
+                                        Language.text(this, R.string.resume), (d, w) -> begin())
+                                .setNegativeButton(
+                                        Language.text(this, R.string.finish_now),
+                                        (d, w) -> {
+                                            store.finishWalk(System.currentTimeMillis());
+                                            refresh();
+                                        })
+                                .show();
+                    } else begin();
+                });
+        hint.setVisibility(View.GONE);
+        downloadStatus.setMaxLines(2);
+        status.setMaxLines(3);
+        AtlasUi.styleButton(start, true);
+        LinearLayout.LayoutParams primaryParams =
+                (LinearLayout.LayoutParams) start.getLayoutParams();
+        primaryParams.topMargin = dp(6);
+        start.setLayoutParams(primaryParams);
+        footer.setBackground(AtlasUi.panel(AtlasUi.INK, 0xff756d5d, dp(18)));
+        View.OnClickListener details =
+                v ->
+                        new AtlasUi.DialogBuilder(this, v)
+                                .setTitle(Language.text(this, R.string.atlas_title))
+                                .setMessage(
+                                        status.getText()
+                                                + "\n\n"
+                                                + downloadStatus.getText()
+                                                + "\n\n"
+                                                + Language.text(this, R.string.explore_hint))
+                                .setPositiveButton(Language.text(this, R.string.close), null)
+                                .show();
+        status.setOnClickListener(details);
+        status.setFocusable(true);
+        downloadStatus.setOnClickListener(details);
+        downloadStatus.setFocusable(true);
+        footer.removeView(offlineButton);
+        LinearLayout secondary = new LinearLayout(this);
+        LinearLayout.LayoutParams secondaryParams = new LinearLayout.LayoutParams(-1, dp(48));
+        secondaryParams.topMargin = dp(8);
+        footer.addView(secondary, secondaryParams);
+        secondary.addView(offlineButton, new LinearLayout.LayoutParams(0, -1, 1));
+        Button timeline = button(Language.text(this, R.string.walk_history));
+        LinearLayout.LayoutParams historyParams = new LinearLayout.LayoutParams(0, -1, 1);
+        historyParams.leftMargin = dp(8);
+        secondary.addView(timeline, historyParams);
+        timeline.setOnClickListener(v -> showWalks(v));
+        root.setBackgroundColor(AtlasUi.INK);
+        getWindow().setStatusBarColor(AtlasUi.INK);
+        getWindow().setNavigationBarColor(AtlasUi.INK);
+        head.setBackground(AtlasDecor.background(head, AtlasDecor.HEADER));
+        head.setPadding(dp(56), dp(10), dp(48), dp(12));
+        title.setMaxLines(1);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        title.setTextSize(
+                getResources().getConfiguration().orientation
+                                == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                        ? 26
+                        : 34);
+        title.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(47)));
+        AtlasDecor.heading(title);
+        eyebrow.setGravity(Gravity.CENTER);
+        eyebrow.setTextSize(8);
+        eyebrow.setMaxLines(1);
+        eyebrow.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        eyebrow.setLetterSpacing(.12f);
+        stats.setGravity(Gravity.CENTER);
+        stats.setMaxLines(2);
+        stats.setTextSize(10);
+        stats.setTypeface(Typeface.create("serif", 0));
+        rule.setVisibility(View.GONE);
+        AtlasDecor.button(take, true);
+        take.setPadding(dp(14), dp(6), dp(14), dp(6));
+        gallery.setPadding(dp(14), dp(6), dp(14), dp(6));
+        photoActions.getChildAt(0).setLayoutParams(new LinearLayout.LayoutParams(dp(106), dp(48)));
+        gap.width = dp(116);
+        gallery.setLayoutParams(gap);
+        for (int i = 0; i < controls.getChildCount(); i++)
+            AtlasDecor.circular((Button) controls.getChildAt(i));
+        footer.setBackground(AtlasDecor.background(footer, AtlasDecor.PANEL));
+        footer.setPadding(dp(18), dp(16), dp(18), dp(18));
+        status.setTextColor(AtlasUi.CREAM);
+        status.setTypeface(Typeface.create("serif", 0));
+        downloadStatus.setTextColor(AtlasUi.MUTED);
+        primaryParams.height = dp(60);
+        start.setLayoutParams(primaryParams);
+        start.setTextSize(19);
+        start.setAutoSizeTextTypeUniformWithConfiguration(
+                14, 20, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
+        secondaryParams.height = dp(52);
+        secondary.setLayoutParams(secondaryParams);
+        offlineButton.setPadding(dp(16), dp(5), dp(16), dp(5));
+        timeline.setPadding(dp(16), dp(5), dp(16), dp(5));
+        if (getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            root.removeView(head);
+            root.removeView(footer);
+            root.setOrientation(LinearLayout.HORIZONTAL);
+            frame.setLayoutParams(new LinearLayout.LayoutParams(0, -1, 1));
+            networkPosition.gravity = Gravity.BOTTOM | Gravity.LEFT;
+            networkPosition.leftMargin = dp(14);
+            networkPosition.bottomMargin = dp(80);
+            onlineButton.setLayoutParams(networkPosition);
+            LinearLayout side = new LinearLayout(this);
+            side.setOrientation(1);
+            side.addView(head);
+            side.addView(footer);
+            ScrollView sideScroll = new ScrollView(this);
+            sideScroll.setFillViewport(true);
+            sideScroll.addView(side);
+            root.addView(sideScroll, new LinearLayout.LayoutParams(dp(260), -1));
+        }
+        // Keep the network toggle clear of the right-hand map actions in both orientations.
+        status.setPadding(0, 0, dp(46), 0);
+        networkPosition.gravity = Gravity.BOTTOM | Gravity.LEFT;
+        networkPosition.leftMargin = dp(14);
+        networkPosition.bottomMargin = Math.max(networkPosition.bottomMargin, dp(64));
+        onlineButton.setLayoutParams(networkPosition);
+        if (!getPreferences(0).getBoolean("intro", false)) {
+            new AtlasUi.DialogBuilder(this)
+                    .setTitle(Language.text(this, R.string.the_world_awaits_your_footsteps))
+                    .setMessage(
+                            Language.text(
+                                    this,
+                                    R.string
+                                            .start_a_walk_and_allow_precise_location_the_map_is_revealed_in_a_))
+                    .setPositiveButton(
+                            Language.text(this, R.string.got_it),
+                            (d, w) -> getPreferences(0).edit().putBoolean("intro", true).apply())
+                    .show();
+        }
+    }
+
+    void showWalks() {
+        showWalks(null);
+    }
+
+    void showWalks(View anchor) {
+        ArrayList<Store.Walk> walks = store.walks();
+        if (walks.isEmpty()) {
+            toast(
+                    Language.text(
+                            this,
+                            R.string
+                                    .no_walks_yet_earlier_locations_and_photos_are_kept_separately_wit));
+            return;
+        }
+        String[] labels = new String[walks.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = walkLabel(walks.get(i));
+        new AtlasUi.DialogBuilder(this, anchor)
+                .setTitle(Language.text(this, R.string.walk_history))
+                .setItems(labels, (d, i) -> showWalk(walks.get(i)))
+                .setNegativeButton(Language.text(this, R.string.close), null)
+                .show();
+    }
+
+    String walkLabel(Store.Walk w) {
+        return Language.format(
+                this,
+                R.string.walk_label,
+                w.id,
+                Language.date(this, w.started),
+                w.ended == 0 ? Language.text(this, R.string.unfinished) : "");
+    }
+
+    void showWalk(Store.Walk w) {
+        // Read one walk off the UI thread, just like the main route reader.
+        dataWorker.execute(
+                () -> {
+                    ArrayList<double[]> route = store.walkPoints(w.id);
+                    ArrayList<Store.Photo> photos = store.walkPhotos(w, System.currentTimeMillis());
+                    double km = Store.distance(route) / 1000;
+                    long seconds = w.elapsed(System.currentTimeMillis()) / 1000;
+                    handler.post(
+                            () -> {
+                                if (destroyed) return;
+                                LinearLayout body = new LinearLayout(this);
+                                body.setOrientation(1);
+                                body.setPadding(dp(16), dp(8), dp(16), dp(8));
+                                TextView summary =
+                                        text(
+                                                String.format(
+                                                        Language.locale(this),
+                                                        Language.text(
+                                                                this,
+                                                                R.string
+                                                                        .km_total_time_h_min_s_nincludes_breaks_and_waiting_for_gps_photos),
+                                                        km,
+                                                        seconds / 3600,
+                                                        seconds / 60 % 60,
+                                                        seconds % 60,
+                                                        photos.size()),
+                                                15,
+                                                Color.WHITE);
+                                body.addView(summary);
+                                Button place =
+                                        button(
+                                                Language.text(
+                                                        this, R.string.show_walk_location_on_map));
+                                place.setEnabled(!route.isEmpty());
+                                body.addView(place);
+                                place.setOnClickListener(
+                                        v -> {
+                                            double[] p = route.get(0);
+                                            map.showPlace(p[0], p[1]);
+                                        });
+                                for (Store.Photo photo : photos) {
+                                    Button b =
+                                            button(
+                                                    Language.text(this, R.string.photo)
+                                                            + photo.id
+                                                            + " · "
+                                                            + new java.text.SimpleDateFormat(
+                                                                            "HH:mm:ss",
+                                                                            Language.locale(this))
+                                                                    .format(
+                                                                            new Date(
+                                                                                    photo.created)));
+                                    body.addView(b);
+                                    b.setOnClickListener(
+                                            v ->
+                                                    startActivity(
+                                                            new Intent(this, PhotoActivity.class)
+                                                                    .putExtra("id", photo.id)));
+                                }
+                                ScrollView scroll = new ScrollView(this);
+                                scroll.addView(body);
+                                new AtlasUi.DialogBuilder(this)
+                                        .setTitle(walkLabel(w))
+                                        .setView(scroll)
+                                        .setPositiveButton(
+                                                Language.text(this, R.string.back_to_map),
+                                                (d, i) -> {
+                                                    if (!route.isEmpty()) {
+                                                        double[] p = route.get(0);
+                                                        map.showPlace(p[0], p[1]);
+                                                    }
+                                                })
+                                        .setNegativeButton(
+                                                Language.text(this, R.string.close), null)
+                                        .show();
+                            });
+                });
+    }
+
+    void begin() {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[] {
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    },
+                    7);
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                        != PackageManager.PERMISSION_GRANTED)
+            requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, 8);
+        try {
+            startForegroundService(new Intent(this, WalkService.class));
+        } catch (Exception e) {
+            status.setText(Language.text(this, R.string.could_not_start_gps) + e.getMessage());
+        }
+    }
+
+    public void onRequestPermissionsResult(int r, String[] p, int[] g) {
+        super.onRequestPermissionsResult(r, p, g);
+        if (r == 12) {
+            if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                    && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED) takePhoto();
+            else
+                toast(
+                        Language.text(
+                                this,
+                                R.string
+                                        .camera_and_location_access_are_required_for_geotagged_photos));
+        }
+        if (r == 9) {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) watchLocation();
+            else liveStatus = Language.text(this, R.string.allow_precise_location_in_app_settings);
+        }
+        if (r == 7) {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) {
+                watchLocation();
+                begin();
+            } else
+                new AtlasUi.DialogBuilder(this)
+                        .setMessage(
+                                Language.text(
+                                        this,
+                                        R.string
+                                                .precise_location_is_needed_to_reveal_small_areas_enable_it_in_app))
+                        .setPositiveButton(
+                                Language.text(this, R.string.open_settings),
+                                (d, w) ->
+                                        startActivity(
+                                                new Intent(
+                                                        android.provider.Settings
+                                                                .ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                        android.net.Uri.parse(
+                                                                "package:" + getPackageName()))))
+                        .setNegativeButton(Language.text(this, R.string.later), null)
+                        .show();
+        }
+    }
+
+    final Runnable tick =
+            new Runnable() {
+                public void run() {
+                    if (resumed) {
+                        refresh();
+                        handler.postDelayed(this, 1000);
+                    }
+                }
+            };
+    private Boolean motionWalking;
+
+    void refresh() {
+        boolean walking = WalkService.running;
+        if (motionWalking != null && motionWalking != walking) {
+            AtlasMotion.stateChange(start, walking);
+            AtlasMotion.stateChange(stats, walking);
+        }
+        motionWalking = walking;
+        if (onlineButton != null)
+            onlineButton.setText(Language.text(this, map.online ? "network_on" : "network_off"));
+        if (MapDownloadService.generation != seenGeneration) {
+            seenGeneration = MapDownloadService.generation;
+            map.reloadRegions();
+        }
+        offlineButton.setText(
+                Language.text(
+                        this,
+                        MapDownloadService.running
+                                ? "downloading"
+                                : MapDownloadService.hasPending(this)
+                                        ? "resume_download"
+                                        : "download_area"));
+        downloadStatus.setText(
+                MapDownloadService.currentStatus(this).isEmpty()
+                        ? Language.text(this, R.string.saved_offline_areas) + map.savedRegionCount()
+                        : MapDownloadService.currentStatus(this));
+        readNewPoints();
+        if (!MapDownloadService.running && !map.worldDescription().isEmpty())
+            downloadStatus.setText(map.worldDescription());
+        status.setText(
+                (WalkService.running ? WalkService.currentStatus(this) : liveStatus)
+                        + "\n"
+                        + map.satelliteStatus());
+        start.setText(
+                Language.text(
+                        this,
+                        WalkService.running
+                                ? "finish_walk"
+                                : store.openWalk() != null ? "resume_walk" : "start_walk"));
+    }
+
+    void readNewPoints() {
+        if (readingPoints || destroyed) return;
+        readingPoints = true;
+        dataWorker.execute(
+                () -> {
+                    ArrayList<double[]> snapshot = null;
+                    double distance = 0;
+                    try {
+                        if (store.latestPointId() > lastPointId) {
+                            Store.PointPage page = store.pointsAfter(lastPointId, 5000);
+                            for (double[] point : page.points) {
+                                if (!loadedPoints.isEmpty()) {
+                                    double[] previous = loadedPoints.get(loadedPoints.size() - 1);
+                                    if (MapView.connects(previous, point)
+                                            && point[3] > previous[3]) {
+                                        double meters =
+                                                GpsFilter.distance(
+                                                        previous[0],
+                                                        previous[1],
+                                                        point[0],
+                                                        point[1]);
+                                        if (meters / ((point[3] - previous[3]) / 1000.0) <= 4.5)
+                                            walkedDistance += meters;
+                                    }
+                                }
+                                loadedPoints.add(point);
+                            }
+                            lastPointId = page.lastId;
+                            snapshot = new ArrayList<>(loadedPoints);
+                            distance = walkedDistance;
+                        }
+                    } catch (Exception failure) {
+                        android.util.Log.e("MapNotes", "Route read failed", failure);
+                    }
+                    final ArrayList<double[]> result = snapshot;
+                    final double km = distance / 1000;
+                    handler.post(
+                            () -> {
+                                readingPoints = false;
+                                if (!destroyed && result != null) {
+                                    count = result.size();
+                                    map.update(result);
+                                    stats.setText(
+                                            String.format(
+                                                    Language.locale(this),
+                                                    Language.text(
+                                                            this, R.string.km_walked_route_points),
+                                                    km,
+                                                    result.size()));
+                                    readNewPoints();
+                                }
+                            });
+                });
+    }
+
+    protected void onResume() {
+        super.onResume();
+        if (getIntent().hasExtra("mapLat")) {
+            map.showPlace(
+                    getIntent().getDoubleExtra("mapLat", 0),
+                    getIntent().getDoubleExtra("mapLon", 0));
+            getIntent().removeExtra("mapLat");
+        }
+        resumed = true;
+        watchLocation();
+        map.setPhotos(store.photos());
+        handler.post(tick);
+        if (getIntent().getBooleanExtra("openPhotos", false)) {
+            getIntent().removeExtra("openPhotos");
+            showPhotos(store.photos());
+        }
+    }
+
+    protected void onPause() {
+        resumed = false;
+        handler.removeCallbacks(tick);
+        if (locationManager != null) locationManager.removeUpdates(this);
+        watching = false;
+        super.onPause();
+    }
+
+    void watchLocation() {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (!getPreferences(0).getBoolean("locationAsked", false)) {
+                getPreferences(0).edit().putBoolean("locationAsked", true).apply();
+                requestPermissions(
+                        new String[] {
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        },
+                        9);
+            }
+            return;
+        }
+        if (watching) return;
+        if (locationManager == null)
+            locationManager = (android.location.LocationManager) getSystemService(LOCATION_SERVICE);
+        liveFilter = new GpsFilter();
+        foregroundSession = System.currentTimeMillis();
+        try {
+            locationManager.requestLocationUpdates(
+                    android.location.LocationManager.GPS_PROVIDER, 1000, 0, this);
+            watching = true;
+            liveStatus =
+                    locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
+                            ? Language.text(this, R.string.finding_current_gps_location)
+                            : Language.text(this, R.string.enable_gps_in_device_settings);
+            if (locationManager
+                    .getAllProviders()
+                    .contains(android.location.LocationManager.NETWORK_PROVIDER))
+                locationManager.requestLocationUpdates(
+                        android.location.LocationManager.NETWORK_PROVIDER, 1000, 0, this);
+        } catch (Exception e) {
+            liveStatus = Language.text(this, R.string.could_not_get_gps_location) + e.getMessage();
+        }
+    }
+
+    public void onLocationChanged(android.location.Location l) {
+        if (wasWalking != WalkService.running) {
+            wasWalking = WalkService.running;
+            foregroundSession = System.currentTimeMillis();
+            liveFilter = new GpsFilter();
+        }
+        if (!l.hasAccuracy() || l.isFromMockProvider() || (l.hasSpeed() && l.getSpeed() > 4.5f))
+            return;
+        long age = SystemClock.elapsedRealtimeNanos() - l.getElapsedRealtimeNanos();
+        if (age < -1000000000L
+                || age > 15000000000L
+                || !Double.isFinite(l.getLatitude())
+                || !Double.isFinite(l.getLongitude())
+                || Math.abs(l.getLatitude()) > 85.05112878
+                || Math.abs(l.getLongitude()) > 180) return;
+        if (l.getAccuracy() > 30 && l.getAccuracy() <= 1000) {
+            if (lastDisplay != null) {
+                double dt =
+                        (l.getElapsedRealtimeNanos() - lastDisplay.getElapsedRealtimeNanos()) / 1e9;
+                if (dt <= 0 || (dt < 10 && lastDisplay.getAccuracy() < l.getAccuracy())) return;
+                double d = l.distanceTo(lastDisplay);
+                if (d > lastDisplay.getAccuracy() + l.getAccuracy() + dt * 4.5) return;
+            }
+            lastDisplay = new android.location.Location(l);
+            map.setCurrent(l, false);
+            liveStatus =
+                    Language.text(this, R.string.approximate_location)
+                            + Math.round(l.getAccuracy())
+                            + Language.text(
+                                    this, R.string.m_waiting_for_precise_gps_to_reveal_the_map);
+            refresh();
+            return;
+        }
+        String why =
+                liveFilter.accept(
+                        new GpsFilter.Fix(
+                                l.getLatitude(),
+                                l.getLongitude(),
+                                l.getAccuracy(),
+                                l.getElapsedRealtimeNanos(),
+                                l.isFromMockProvider()),
+                        SystemClock.elapsedRealtimeNanos());
+        if (why != null) {
+            liveStatus = Language.text(this, why);
+            return;
+        }
+        lastDisplay = new android.location.Location(l);
+        map.setCurrent(l);
+        liveStatus =
+                Language.text(this, R.string.you_are_here_gps)
+                        + Math.round(l.getAccuracy())
+                        + Language.text(this, R.string.m_reveal_up_to_100_m);
+        if (!WalkService.running) {
+            try {
+                store.add(l, foregroundSession);
+            } catch (Exception e) {
+                liveStatus = Language.text(this, R.string.could_not_save_location);
+            }
+        }
+        refresh();
+    }
+
+    public void onProviderDisabled(String p) {
+        liveStatus = Language.text(this, R.string.enable_gps_in_device_settings);
+    }
+
+    public void onProviderEnabled(String p) {
+        liveStatus = Language.text(this, R.string.finding_current_gps_location);
+    }
+
+    public void onStatusChanged(String p, int s, Bundle b) {}
+
+    protected void onDestroy() {
+        destroyed = true;
+        dataWorker.shutdownNow();
+        map.close();
+        store.close();
+        super.onDestroy();
+    }
+
+    void menu() {
+        menu(null);
+    }
+
+    void menu(View anchor) {
+        String[] choices = {
+            Language.text(this, R.string.connect_map),
+            Language.text(this, R.string.download_link),
+            map.online
+                    ? Language.text(this, R.string.disable_layer)
+                    : Language.text(this, R.string.enable_layer),
+            map.illustrated
+                    ? Language.text(this, R.string.satellite_layer)
+                    : Language.text(this, R.string.atlas_layer),
+            Language.text(this, R.string.about),
+            Language.text(this, R.string.crash_report),
+            Language.text(this, R.string.map_sources),
+            Language.text(this, R.string.disconnect_map),
+            Language.text(this, "language"),
+            Language.text(this, "imagery_title")
+        };
+        new AtlasUi.DialogBuilder(this, anchor)
+                .setTitle(Language.text(this, "map_menu"))
+                .setItems(
+                        choices,
+                        (d, w) -> {
+                            if (w == 0) {
+                                chooseWorldMap();
+                            } else if (w == 1) download();
+                            else if (w == 2) {
+                                map.toggleOnline();
+                            } else if (w == 3) {
+                                map.illustrated = !map.illustrated;
+                                map.invalidate();
+                            } else if (w == 5) CrashReport.show(this);
+                            else if (w == 6) MapImport.catalog(this);
+                            else if (w == 7) map.disconnectWorld();
+                            else if (w == 8) Language.show(this);
+                            else if (w == 9)
+                                startActivity(
+                                        new Intent(this, ImageryTraceActivity.class)
+                                                .putExtra("latitude", map.centerLatitude())
+                                                .putExtra("longitude", map.centerLongitude())
+                                                .putExtra("zoom", map.zoom));
+                            else
+                                new AtlasUi.DialogBuilder(this)
+                                        .setTitle("MapNotes · " + Language.version(this))
+                                        .setMessage(
+                                                Language.text(
+                                                        this,
+                                                        R.string
+                                                                .gps_accuracy_within_30_m_speed_up_to_4_5_m_s_with_additional_accu))
+                                        .setPositiveButton(
+                                                Language.text(this, R.string.close), null)
+                                        .show();
+                        })
+                .show();
+    }
+
+    void download() {
+        EditText url = new EditText(this);
+        url.setHint("https://…/region.mbtiles");
+        url.setInputType(17);
+        new AtlasUi.DialogBuilder(this)
+                .setTitle(Language.text(this, R.string.download_map_to_phone))
+                .setMessage(
+                        Language.text(
+                                this,
+                                R.string
+                                        .paste_a_direct_https_link_to_mbtiles_for_a_large_planet_file_use_))
+                .setView(url)
+                .setPositiveButton(
+                        Language.text(this, R.string.download),
+                        (d, w) -> {
+                            String s = url.getText().toString().trim();
+                            if (!s.startsWith("https://")) {
+                                toast(Language.text(this, R.string.an_https_link_is_required));
+                                return;
+                            }
+                            importMap(
+                                    () -> {
+                                        HttpURLConnection h =
+                                                (HttpURLConnection) new URL(s).openConnection();
+                                        h.setConnectTimeout(15000);
+                                        h.setReadTimeout(30000);
+                                        if (h.getResponseCode() != 200) {
+                                            h.disconnect();
+                                            throw new IOException(
+                                                    Language.text(this, R.string.http_error));
+                                        }
+                                        return new FilterInputStream(h.getInputStream()) {
+                                            public void close() throws IOException {
+                                                super.close();
+                                                h.disconnect();
+                                            }
+                                        };
+                                    });
+                        })
+                .setNegativeButton(Language.text(this, R.string.cancel), null)
+                .show();
+    }
+
+    void chooseWorldMap() {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.setType("*/*");
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(i, 11);
+    }
+
+    void mapConnected(String description) {
+        map.illustrated = true;
+        map.openOffline();
+        toast(Language.text(this, R.string.connected) + description);
+    }
+
+    interface InputFactory {
+        InputStream open() throws Exception;
+    }
+
+    protected void onActivityResult(int r, int result, Intent data) {
+        super.onActivityResult(r, result, data);
+        if (r == 11 && result == RESULT_OK && data != null) {
+            android.net.Uri uri = data.getData();
+            if (uri == null) return;
+            try {
+                getContentResolver()
+                        .takePersistableUriPermission(
+                                uri, data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (SecurityException unavailable) {
+            }
+            MapImport.connect(this, uri);
+        }
+    }
+
+    void importMap(InputFactory factory) {
+        MapImport.copy(this, factory::open);
+    }
+
+    void toast(String s) {
+        Toast.makeText(this, s, Toast.LENGTH_LONG).show();
+    }
+
+    View photoLaunchButton(View view) {
+        if (view instanceof Button
+                && Language.text(this, R.string.take_photo)
+                        .contentEquals(((Button) view).getText())) return view;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = photoLaunchButton(group.getChildAt(i));
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    void takePhoto() {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                        != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[] {
+                        Manifest.permission.CAMERA,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    },
+                    12);
+            return;
+        }
+        Intent intent = new Intent(this, CameraActivity.class);
+        if (lastDisplay != null) intent.putExtra("location", lastDisplay);
+        View anchor = photoLaunchButton(getWindow().getDecorView());
+        if (anchor != null) {
+            int[] xy = new int[2];
+            anchor.getLocationOnScreen(xy);
+            intent.putExtra(
+                    "cameraOrigin",
+                    new int[] {xy[0], xy[1], anchor.getWidth(), anchor.getHeight()});
+        }
+        startActivity(intent);
+        overridePendingTransition(0, 0);
+    }
+
+    void showPhotos(ArrayList<Store.Photo> photos) {
+        showPhotos(photos, null);
+    }
+
+    void showPhotos(ArrayList<Store.Photo> photos, View anchor) {
+        if (photos.isEmpty()) {
+            toast(Language.text(this, R.string.no_photos_yet_tap_photo_on_the_map));
+            return;
+        }
+        PhotoChooser.show(this, photos, anchor);
+    }
+
+    void downloadArea() {
+        if (MapDownloadService.running) {
+            new AtlasUi.DialogBuilder(this, offlineButton)
+                    .setTitle(Language.text(this, R.string.map_download_in_progress))
+                    .setMessage(MapDownloadService.currentStatus(this))
+                    .setPositiveButton(Language.text(this, R.string.continue_download), null)
+                    .setNegativeButton(
+                            Language.text(this, R.string.pause),
+                            (d, w) ->
+                                    startService(
+                                            new Intent(this, MapDownloadService.class)
+                                                    .setAction("CANCEL")))
+                    .show();
+            return;
+        }
+        if (MapDownloadService.hasPending(this)) {
+            new AtlasUi.DialogBuilder(this, offlineButton)
+                    .setTitle(Language.text(this, R.string.unfinished_download_saved))
+                    .setMessage(
+                            Language.text(
+                                    this,
+                                    R.string
+                                            .completed_sections_are_already_on_your_phone_resume_where_you_lef))
+                    .setPositiveButton(
+                            Language.text(this, R.string.resume),
+                            (d, w) -> {
+                                try {
+                                    startForegroundService(MapDownloadService.resumeIntent(this));
+                                } catch (Exception e) {
+                                    toast(e.getMessage());
+                                }
+                            })
+                    .setNeutralButton(
+                            Language.text(this, R.string.another_area), (d, w) -> selectArea())
+                    .setNegativeButton(Language.text(this, R.string.close), null)
+                    .show();
+            return;
+        }
+        selectArea();
+    }
+
+    void selectArea() {
+        new AtlasUi.DialogBuilder(this, offlineButton)
+                .setTitle(Language.text(this, R.string.what_would_you_like_to_save_offline))
+                .setItems(
+                        new String[] {
+                            Language.text(this, R.string.atlas_streets_and_buildings_faster),
+                            Language.text(this, R.string.atlas_and_satellite_imagery)
+                        },
+                        (d, i) -> selectAreaSize(i == 1))
+                .setNegativeButton(Language.text(this, R.string.cancel), null)
+                .show();
+    }
+
+    void selectAreaSize(boolean satellite) {
+        if (map.zoom < 11) {
+            toast(
+                    Language.text(
+                            this,
+                            R.string.wait_for_a_gps_location_or_zoom_in_on_the_area_you_want));
+            return;
+        }
+        double lat = map.centerLatitude(), lon = map.centerLongitude();
+        int[] selected = {1};
+        String[] sizes = {
+            Language.text(this, R.string.text_1_1_km),
+            Language.text(this, R.string.text_4_4_km),
+            Language.text(this, R.string.text_20_20_km),
+            Language.text(this, R.string.text_50_50_km),
+            Language.text(this, R.string.text_100_100_km_for_long_walks)
+        };
+        new AtlasUi.DialogBuilder(this)
+                .setTitle(Language.text(this, R.string.area_around_map_centre))
+                .setSingleChoiceItems(sizes, 1, (d, i) -> selected[0] = i)
+                .setPositiveButton(
+                        Language.text(this, R.string.download),
+                        (d, i) -> {
+                            try {
+                                double radius =
+                                        new double[] {500, 2000, 10000, 25000, 50000}[selected[0]];
+                                RegionPlan plan = new RegionPlan(lat, lon, radius);
+                                long mb = plan.estimatedBytes() / 1024 / 1024;
+                                new AtlasUi.DialogBuilder(this)
+                                        .setTitle(sizes[selected[0]])
+                                        .setMessage(
+                                                (satellite
+                                                                ? Language.text(
+                                                                                this,
+                                                                                R.string
+                                                                                        .save_atlas_and_satellite_imagery_estimated_total_about)
+                                                                        + mb
+                                                                        + Language.text(
+                                                                                this, R.string.mb)
+                                                                : Language.text(
+                                                                        this,
+                                                                        R.string
+                                                                                .save_streets_buildings_and_water_satellite_imagery_is_excluded_si))
+                                                        + Language.text(
+                                                                this,
+                                                                R.string
+                                                                        .a_large_area_may_take_several_hours_try_1_4_km_first_downloads_ca))
+                                        .setPositiveButton(
+                                                Language.text(this, R.string.start_download),
+                                                (dd, w) -> {
+                                                    try {
+                                                        if (Build.VERSION.SDK_INT >= 33
+                                                                && checkSelfPermission(
+                                                                                Manifest.permission
+                                                                                        .POST_NOTIFICATIONS)
+                                                                        != PackageManager
+                                                                                .PERMISSION_GRANTED)
+                                                            requestPermissions(
+                                                                    new String[] {
+                                                                        Manifest.permission
+                                                                                .POST_NOTIFICATIONS
+                                                                    },
+                                                                    8);
+                                                        startForegroundService(
+                                                                new Intent(
+                                                                                this,
+                                                                                MapDownloadService
+                                                                                        .class)
+                                                                        .putExtra("lat", lat)
+                                                                        .putExtra("lon", lon)
+                                                                        .putExtra("radius", radius)
+                                                                        .putExtra(
+                                                                                "satellite",
+                                                                                satellite));
+                                                        downloadStatus.setText(
+                                                                Language.text(
+                                                                        this,
+                                                                        R.string
+                                                                                .starting_download));
+                                                    } catch (Exception e) {
+                                                        toast(e.getMessage());
+                                                    }
+                                                })
+                                        .setNegativeButton(
+                                                Language.text(this, R.string.cancel), null)
+                                        .show();
+                            } catch (Exception e) {
+                                toast(e.getMessage());
+                            }
+                        })
+                .setNegativeButton(Language.text(this, R.string.cancel), null)
+                .show();
+    }
 }

@@ -1,30 +1,401 @@
 package ru.main.explorer;
-import android.app.Application;import android.database.sqlite.SQLiteDatabase;import android.graphics.*;import android.net.Uri;import java.io.*;import java.lang.reflect.*;import java.nio.file.*;import java.util.*;import java.util.zip.*;import org.junit.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.*;import static org.junit.Assert.*;
-@RunWith(RobolectricTestRunner.class) @Config(sdk=34,qualifiers="ru-mdpi") @GraphicsMode(GraphicsMode.Mode.NATIVE)
+
+import android.app.Application;
+import android.database.sqlite.SQLiteDatabase;
+import android.graphics.*;
+import android.net.Uri;
+import java.io.*;
+import java.lang.reflect.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.zip.*;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.robolectric.*;
+import org.robolectric.annotation.*;
+import static org.junit.Assert.*;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 34, qualifiers = "ru-mdpi")
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class WorldMapTest {
- final ArrayList<File> files=new ArrayList<>();Application app;
- @Before public void setup(){app=RuntimeEnvironment.getApplication();}
- @After public void cleanup(){for(File f:files)f.delete();}
- static void num(ByteArrayOutputStream out,long value){while((value&~127L)!=0){out.write((int)(value&127)|128);value>>>=7;}out.write((int)value);}
- static byte[] message(int field,byte[] data){ByteArrayOutputStream out=new ByteArrayOutputStream();num(out,(field<<3)|2);num(out,data.length);out.write(data,0,data.length);return out.toByteArray();}
- static byte[] scalar(int field,int value){ByteArrayOutputStream out=new ByteArrayOutputStream();num(out,field<<3);num(out,value);return out.toByteArray();}
- static byte[] join(byte[]... parts){ByteArrayOutputStream out=new ByteArrayOutputStream();for(byte[] bytes:parts)out.write(bytes,0,bytes.length);return out.toByteArray();}
- static byte[] packed(int... values){ByteArrayOutputStream out=new ByteArrayOutputStream();for(int value:values)num(out,value);return out.toByteArray();}
- static byte[] layer(String name,int type,String label,int... geometry)throws Exception{return message(3,join(message(1,name.getBytes("UTF-8")),message(2,join(message(2,packed(0,0)),scalar(3,type),message(4,packed(geometry)))),message(3,"name".getBytes("UTF-8")),message(4,message(1,label.getBytes("UTF-8"))),scalar(5,4096),scalar(15,2)));}
- static byte[] synthetic()throws Exception{return join(layer("water",3,"",9,0,0,26,8192,0,0,8192,8191,0,15,9,2048,6143,26,0,2048,2048,0,0,2047,15),layer("roads",2,"Test Street",9,0,4096,10,8192,0),layer("places",1,"Test Town",9,4096,4096));}
- byte[] fixture()throws Exception{try(InputStream in=getClass().getResourceAsStream("/world/moscow-14-9903-5122.pbf");ByteArrayOutputStream out=new ByteArrayOutputStream()){assertNotNull(in);byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)out.write(b,0,n);return out.toByteArray();}}
- File database(byte[] tile,int z,int x,int y,boolean normalized)throws Exception{File f=new File(app.getFilesDir(),"world-test-"+UUID.randomUUID()+".mbtiles");files.add(f);try(SQLiteDatabase db=SQLiteDatabase.openOrCreateDatabase(f,null)){db.execSQL("CREATE TABLE metadata(name TEXT,value TEXT)");db.execSQL("INSERT INTO metadata VALUES('name','Test world'),('format','pbf'),('minzoom',?),('maxzoom',?)",new Object[]{""+z,""+z});if(normalized){db.execSQL("CREATE TABLE map(zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_id TEXT,PRIMARY KEY(zoom_level,tile_column,tile_row))");db.execSQL("CREATE TABLE images(tile_id TEXT PRIMARY KEY,tile_data BLOB)");db.execSQL("INSERT INTO map VALUES(?,?,?,'a')",new Object[]{z,x,(1<<z)-1-y});db.execSQL("INSERT INTO images VALUES('a',?)",new Object[]{tile});db.execSQL("CREATE VIEW tiles AS SELECT zoom_level,tile_column,tile_row,tile_data FROM map JOIN images USING(tile_id)");}else{db.execSQL("CREATE TABLE tiles(zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_data BLOB)");db.execSQL("CREATE UNIQUE INDEX tile_index ON tiles(zoom_level,tile_column,tile_row)");db.execSQL("INSERT INTO tiles VALUES(?,?,?,?)",new Object[]{z,x,(1<<z)-1-y,tile});}}return f;}
- @Test public void realOpenMapTilesTileContainsBuildingsStreetsAndNames()throws Exception{Mvt.Tile tile=Mvt.decode(fixture());assertTrue(tile.vertices>1000);assertTrue(tile.features.stream().anyMatch(f->f.layer.equals("building")));assertTrue(tile.features.stream().anyMatch(f->f.layer.equals("transportation")));assertTrue(tile.features.stream().anyMatch(f->!f.name.isEmpty()));System.out.println("Real Moscow MVT: "+tile.features.size()+" features, "+tile.vertices+" vertices, estimated "+tile.bytes()+" bytes");}
- @Test public void gzipAndRawMvtDecodeToSameGeometry()throws Exception{byte[] raw=synthetic();ByteArrayOutputStream compressed=new ByteArrayOutputStream();try(GZIPOutputStream gzip=new GZIPOutputStream(compressed)){gzip.write(raw);}Mvt.Tile a=Mvt.decode(raw),b=Mvt.decode(compressed.toByteArray());assertEquals(a.vertices,b.vertices);assertEquals(a.features.size(),b.features.size());}
- @Test public void largeTileIsReadInChunksBelowAndroidCursorWindowLimit()throws Exception{byte[] large=join(synthetic(),message(100,new byte[2500000]));try(WorldMap source=WorldMap.open(app,Uri.fromFile(database(large,3,4,5,false)),null)){assertNotNull(source.tile(3,4,5,true));assertEquals(3,source.tile(3,4,5,true).features.size());}}
- @Test public void polygonHolesSurviveVectorDecode()throws Exception{Mvt.Feature water=Mvt.decode(synthetic()).features.get(0);assertEquals(2,water.parts.size());Region region=new Region();region.setPath(water.path,new Region(0,0,4096,4096));assertTrue(region.contains(100,100));assertFalse("An island/hole must not be filled as water",region.contains(1500,1500));}
- @Test public void indexedMbtilesAndNormalizedViewsUseTmsRows()throws Exception{for(boolean normalized:new boolean[]{false,true})try(WorldMap map=WorldMap.open(app,Uri.fromFile(database(synthetic(),3,4,5,normalized)),null)){assertTrue(map.vector);assertNotNull(map.tile(3,4,5,true));assertNull(map.tile(3,4,2,true));int reads=map.tileReads;assertNotNull(map.tile(3,4,5,true));assertEquals("Repeated lookup must use decoded tile cache",reads,map.tileReads);}}
- @Test public void withoutRowidPrimaryKeyArchivesAreAccepted()throws Exception{File file=database(synthetic(),3,4,5,false);try(SQLiteDatabase db=SQLiteDatabase.openDatabase(file.getPath(),null,SQLiteDatabase.OPEN_READWRITE)){db.execSQL("ALTER TABLE tiles RENAME TO old_tiles");db.execSQL("CREATE TABLE tiles(zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_data BLOB,PRIMARY KEY(zoom_level,tile_column,tile_row)) WITHOUT ROWID");db.execSQL("INSERT INTO tiles SELECT * FROM old_tiles");db.execSQL("DROP TABLE old_tiles");}try(WorldMap source=WorldMap.open(app,Uri.fromFile(file),null)){assertNotNull(source.tile(3,4,5,true));}}
- @Test public void unindexedWorldIsRejectedBeforeAnyFullZoomScan()throws Exception{File file=database(synthetic(),3,4,5,false);try(SQLiteDatabase db=SQLiteDatabase.openDatabase(file.getPath(),null,SQLiteDatabase.OPEN_READWRITE)){db.execSQL("DROP INDEX tile_index");db.execSQL("DELETE FROM metadata WHERE name='minzoom' OR name='maxzoom'");}try(WorldMap ignored=WorldMap.open(app,Uri.fromFile(file),null)){fail("An unindexed planet file must not trigger a full-file scan");}catch(IOException expected){assertTrue(expected.getMessage().contains("индекса"));}}
- @Test public void persistedWorldIsActuallyOpenedByMainActivity()throws Exception{File file=database(fixture(),14,9903,5122,false);app.getSharedPreferences("world-map",0).edit().putString("uri",Uri.fromFile(file).toString()).commit();app.getSharedPreferences("map-view",0).edit().putBoolean("online",false).commit();org.robolectric.android.controller.ActivityController<MainActivity> controller=Robolectric.buildActivity(MainActivity.class).setup();MapView map;Field field=MainActivity.class.getDeclaredField("map");field.setAccessible(true);map=(MapView)field.get(controller.get());Field worker=MapView.class.getDeclaredField("mapWorker");worker.setAccessible(true);java.util.concurrent.ExecutorService executor=(java.util.concurrent.ExecutorService)worker.get(map);try{PerformanceTest.barrier(map,"mapWorker");Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();assertTrue(map.hasOffline());assertTrue(map.worldDescription().contains("Test world"));assertTrue(map.illustrated);Field source=MapView.class.getDeclaredField("world");source.setAccessible(true);assertNotNull(source.get(map));assertTrue(((WorldMap)source.get(map)).vector);}finally{controller.pause().stop().destroy();executor.awaitTermination(10,java.util.concurrent.TimeUnit.SECONDS);app.getSharedPreferences("world-map",0).edit().clear().commit();app.getSharedPreferences("map-view",0).edit().clear().commit();}}
- @Test public void rasterArchiveOverzoomsInAtlas()throws Exception{Bitmap raster=Bitmap.createBitmap(256,256,Bitmap.Config.ARGB_8888);raster.eraseColor(0xffdd6644);ByteArrayOutputStream out=new ByteArrayOutputStream();raster.compress(Bitmap.CompressFormat.PNG,100,out);File file=database(out.toByteArray(),1,1,1,false);try(WorldMap source=WorldMap.open(app,Uri.fromFile(file),null)){assertFalse(source.vector);MapView map=new MapView(app);try{map.online=false;map.layout(0,0,512,512);map.zoom=16;map.cx=MapView.x(90);map.cy=MapView.y(-45);source.image(1,1,1);Field loader=WorldMap.class.getDeclaredField("loader");loader.setAccessible(true);((java.util.concurrent.ExecutorService)loader.get(source)).submit(()->{}).get();Bitmap image=Bitmap.createBitmap(512,512,Bitmap.Config.ARGB_8888);source.draw(new Canvas(image),map,true);assertEquals(0xffdd6644,image.getPixel(256,256));}finally{map.close();}}}
- @Test public void realVectorWorldRendersOfflineAndSuppliesBuildingWalls()throws Exception{File file=database(fixture(),14,9903,5122,false);try(WorldMap source=WorldMap.open(app,Uri.fromFile(file),null)){Mvt.Tile tile=source.tile(14,9903,5122,true);assertNotNull(tile);assertFalse(source.buildings(55.748,37.612,100).isEmpty());MapView map=new MapView(app);try{map.online=false;map.follow=false;map.layout(0,0,768,768);map.cx=MapView.x(37.612);map.cy=MapView.y(55.748);map.zoom=17;Bitmap image=Bitmap.createBitmap(768,768,Bitmap.Config.ARGB_8888);source.draw(new Canvas(image),map,true);HashSet<Integer> colors=new HashSet<>();for(int y=100;y<700;y+=5)for(int x=20;x<700;x+=5)colors.add(image.getPixel(x,y));assertTrue("World tile must contain real, styled street/building geometry",colors.size()>8);Canvas previewCanvas=new Canvas(image);Paint credit=new Paint(3);credit.setColor(0xee30394b);previewCanvas.drawRect(0,738,768,768,credit);credit.setColor(0xffeee7cf);credit.setTextSize(14);previewCanvas.drawText("MapNotes · © OpenStreetMap contributors · OpenMapTiles / OpenFreeMap",12,758,credit);File preview=new File("build/rendered/world-map-moscow.png");preview.getParentFile().mkdirs();try(FileOutputStream output=new FileOutputStream(preview)){image.compress(Bitmap.CompressFormat.PNG,100,output);}}finally{map.close();}}}
- @Test public void malformedTilesFailWithoutUnboundedAllocation()throws Exception{for(byte[] bytes:new byte[][]{{1,2,3},{26,(byte)255,(byte)255,(byte)255,127},{26,1,0}}){try{Mvt.decode(bytes);fail("Malformed protobuf must be rejected");}catch(IOException expected){}}}
- @Test public void wrongArchiveFormatIsRejectedBeforeOfferingAHugeCopy()throws Exception{File file=new File(app.getFilesDir(),"wrong-"+UUID.randomUUID()+".pmtiles");files.add(file);try(FileOutputStream out=new FileOutputStream(file)){out.write("PMTiles-not-sqlite-archive".getBytes("US-ASCII"));}try(WorldMap ignored=WorldMap.open(app,Uri.fromFile(file),null)){fail();}catch(WorldMap.InvalidMap expected){assertTrue(expected.getMessage().contains(".mbtiles"));}}
- @Test public void seekableFileLargerThanTwoGbIsReadWithoutCopying()throws Exception{File file=new File(app.getFilesDir(),"world-sparse-"+UUID.randomUUID()+".mbtiles");files.add(file);java.nio.channels.SeekableByteChannel channel=Files.newByteChannel(file.toPath(),EnumSet.of(StandardOpenOption.CREATE_NEW,StandardOpenOption.WRITE,StandardOpenOption.SPARSE));channel.close();try(SQLiteDatabase db=SQLiteDatabase.openOrCreateDatabase(file,null)){db.execSQL("CREATE TABLE metadata(name TEXT,value TEXT)");db.execSQL("INSERT INTO metadata VALUES('name','Large world'),('format','pbf'),('minzoom','0'),('maxzoom','0')");db.execSQL("CREATE TABLE tiles(zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_data BLOB,PRIMARY KEY(zoom_level,tile_column,tile_row))");db.execSQL("INSERT INTO tiles VALUES(0,0,0,?)",new Object[]{synthetic()});}try(RandomAccessFile sparse=new RandomAccessFile(file,"rw")){sparse.setLength(2147483648L+4096);}long before=file.length();try(WorldMap source=WorldMap.open(app,Uri.fromFile(file),null)){assertTrue(before>Integer.MAX_VALUE);assertNotNull(source.tile(0,0,0,true));assertEquals(before,file.length());assertTrue(source.tileReads<=2);}}
+    final ArrayList<File> files = new ArrayList<>();
+    Application app;
+
+    @Before
+    public void setup() {
+        app = RuntimeEnvironment.getApplication();
+    }
+
+    @After
+    public void cleanup() {
+        for (File f : files) f.delete();
+    }
+
+    static void num(ByteArrayOutputStream out, long value) {
+        while ((value & ~127L) != 0) {
+            out.write((int) (value & 127) | 128);
+            value >>>= 7;
+        }
+        out.write((int) value);
+    }
+
+    static byte[] message(int field, byte[] data) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        num(out, (field << 3) | 2);
+        num(out, data.length);
+        out.write(data, 0, data.length);
+        return out.toByteArray();
+    }
+
+    static byte[] scalar(int field, int value) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        num(out, field << 3);
+        num(out, value);
+        return out.toByteArray();
+    }
+
+    static byte[] join(byte[]... parts) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (byte[] bytes : parts) out.write(bytes, 0, bytes.length);
+        return out.toByteArray();
+    }
+
+    static byte[] packed(int... values) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (int value : values) num(out, value);
+        return out.toByteArray();
+    }
+
+    static byte[] layer(String name, int type, String label, int... geometry) throws Exception {
+        return message(
+                3,
+                join(
+                        message(1, name.getBytes("UTF-8")),
+                        message(
+                                2,
+                                join(
+                                        message(2, packed(0, 0)),
+                                        scalar(3, type),
+                                        message(4, packed(geometry)))),
+                        message(3, "name".getBytes("UTF-8")),
+                        message(4, message(1, label.getBytes("UTF-8"))),
+                        scalar(5, 4096),
+                        scalar(15, 2)));
+    }
+
+    static byte[] synthetic() throws Exception {
+        return join(
+                layer(
+                        "water", 3, "", 9, 0, 0, 26, 8192, 0, 0, 8192, 8191, 0, 15, 9, 2048, 6143,
+                        26, 0, 2048, 2048, 0, 0, 2047, 15),
+                layer("roads", 2, "Test Street", 9, 0, 4096, 10, 8192, 0),
+                layer("places", 1, "Test Town", 9, 4096, 4096));
+    }
+
+    byte[] fixture() throws Exception {
+        try (InputStream in = getClass().getResourceAsStream("/world/moscow-14-9903-5122.pbf");
+                ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            assertNotNull(in);
+            byte[] b = new byte[8192];
+            int n;
+            while ((n = in.read(b)) != -1) out.write(b, 0, n);
+            return out.toByteArray();
+        }
+    }
+
+    File database(byte[] tile, int z, int x, int y, boolean normalized) throws Exception {
+        File f = new File(app.getFilesDir(), "world-test-" + UUID.randomUUID() + ".mbtiles");
+        files.add(f);
+        try (SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(f, null)) {
+            db.execSQL("CREATE TABLE metadata(name TEXT,value TEXT)");
+            db.execSQL(
+                    "INSERT INTO metadata VALUES('name','Test world'),('format','pbf'),('minzoom',?),('maxzoom',?)",
+                    new Object[] {"" + z, "" + z});
+            if (normalized) {
+                db.execSQL(
+                        "CREATE TABLE map(zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_id TEXT,PRIMARY KEY(zoom_level,tile_column,tile_row))");
+                db.execSQL("CREATE TABLE images(tile_id TEXT PRIMARY KEY,tile_data BLOB)");
+                db.execSQL(
+                        "INSERT INTO map VALUES(?,?,?,'a')", new Object[] {z, x, (1 << z) - 1 - y});
+                db.execSQL("INSERT INTO images VALUES('a',?)", new Object[] {tile});
+                db.execSQL(
+                        "CREATE VIEW tiles AS SELECT zoom_level,tile_column,tile_row,tile_data FROM map JOIN images USING(tile_id)");
+            } else {
+                db.execSQL(
+                        "CREATE TABLE tiles(zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_data BLOB)");
+                db.execSQL(
+                        "CREATE UNIQUE INDEX tile_index ON tiles(zoom_level,tile_column,tile_row)");
+                db.execSQL(
+                        "INSERT INTO tiles VALUES(?,?,?,?)",
+                        new Object[] {z, x, (1 << z) - 1 - y, tile});
+            }
+        }
+        return f;
+    }
+
+    @Test
+    public void realOpenMapTilesTileContainsBuildingsStreetsAndNames() throws Exception {
+        Mvt.Tile tile = Mvt.decode(fixture());
+        assertTrue(tile.vertices > 1000);
+        assertTrue(tile.features.stream().anyMatch(f -> f.layer.equals("building")));
+        assertTrue(tile.features.stream().anyMatch(f -> f.layer.equals("transportation")));
+        assertTrue(tile.features.stream().anyMatch(f -> !f.name.isEmpty()));
+        System.out.println(
+                "Real Moscow MVT: "
+                        + tile.features.size()
+                        + " features, "
+                        + tile.vertices
+                        + " vertices, estimated "
+                        + tile.bytes()
+                        + " bytes");
+    }
+
+    @Test
+    public void gzipAndRawMvtDecodeToSameGeometry() throws Exception {
+        byte[] raw = synthetic();
+        ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzip = new GZIPOutputStream(compressed)) {
+            gzip.write(raw);
+        }
+        Mvt.Tile a = Mvt.decode(raw), b = Mvt.decode(compressed.toByteArray());
+        assertEquals(a.vertices, b.vertices);
+        assertEquals(a.features.size(), b.features.size());
+    }
+
+    @Test
+    public void largeTileIsReadInChunksBelowAndroidCursorWindowLimit() throws Exception {
+        byte[] large = join(synthetic(), message(100, new byte[2500000]));
+        try (WorldMap source =
+                WorldMap.open(app, Uri.fromFile(database(large, 3, 4, 5, false)), null)) {
+            assertNotNull(source.tile(3, 4, 5, true));
+            assertEquals(3, source.tile(3, 4, 5, true).features.size());
+        }
+    }
+
+    @Test
+    public void polygonHolesSurviveVectorDecode() throws Exception {
+        Mvt.Feature water = Mvt.decode(synthetic()).features.get(0);
+        assertEquals(2, water.parts.size());
+        Region region = new Region();
+        region.setPath(water.path, new Region(0, 0, 4096, 4096));
+        assertTrue(region.contains(100, 100));
+        assertFalse("An island/hole must not be filled as water", region.contains(1500, 1500));
+    }
+
+    @Test
+    public void indexedMbtilesAndNormalizedViewsUseTmsRows() throws Exception {
+        for (boolean normalized : new boolean[] {false, true})
+            try (WorldMap map =
+                    WorldMap.open(
+                            app, Uri.fromFile(database(synthetic(), 3, 4, 5, normalized)), null)) {
+                assertTrue(map.vector);
+                assertNotNull(map.tile(3, 4, 5, true));
+                assertNull(map.tile(3, 4, 2, true));
+                int reads = map.tileReads;
+                assertNotNull(map.tile(3, 4, 5, true));
+                assertEquals("Repeated lookup must use decoded tile cache", reads, map.tileReads);
+            }
+    }
+
+    @Test
+    public void withoutRowidPrimaryKeyArchivesAreAccepted() throws Exception {
+        File file = database(synthetic(), 3, 4, 5, false);
+        try (SQLiteDatabase db =
+                SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READWRITE)) {
+            db.execSQL("ALTER TABLE tiles RENAME TO old_tiles");
+            db.execSQL(
+                    "CREATE TABLE tiles(zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_data BLOB,PRIMARY KEY(zoom_level,tile_column,tile_row)) WITHOUT ROWID");
+            db.execSQL("INSERT INTO tiles SELECT * FROM old_tiles");
+            db.execSQL("DROP TABLE old_tiles");
+        }
+        try (WorldMap source = WorldMap.open(app, Uri.fromFile(file), null)) {
+            assertNotNull(source.tile(3, 4, 5, true));
+        }
+    }
+
+    @Test
+    public void unindexedWorldIsRejectedBeforeAnyFullZoomScan() throws Exception {
+        File file = database(synthetic(), 3, 4, 5, false);
+        try (SQLiteDatabase db =
+                SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READWRITE)) {
+            db.execSQL("DROP INDEX tile_index");
+            db.execSQL("DELETE FROM metadata WHERE name='minzoom' OR name='maxzoom'");
+        }
+        try (WorldMap ignored = WorldMap.open(app, Uri.fromFile(file), null)) {
+            fail("An unindexed planet file must not trigger a full-file scan");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("индекса"));
+        }
+    }
+
+    @Test
+    public void persistedWorldIsActuallyOpenedByMainActivity() throws Exception {
+        File file = database(fixture(), 14, 9903, 5122, false);
+        app.getSharedPreferences("world-map", 0)
+                .edit()
+                .putString("uri", Uri.fromFile(file).toString())
+                .commit();
+        app.getSharedPreferences("map-view", 0).edit().putBoolean("online", false).commit();
+        org.robolectric.android.controller.ActivityController<MainActivity> controller =
+                Robolectric.buildActivity(MainActivity.class).setup();
+        MapView map;
+        Field field = MainActivity.class.getDeclaredField("map");
+        field.setAccessible(true);
+        map = (MapView) field.get(controller.get());
+        Field worker = MapView.class.getDeclaredField("mapWorker");
+        worker.setAccessible(true);
+        java.util.concurrent.ExecutorService executor =
+                (java.util.concurrent.ExecutorService) worker.get(map);
+        try {
+            PerformanceTest.barrier(map, "mapWorker");
+            Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+            assertTrue(map.hasOffline());
+            assertTrue(map.worldDescription().contains("Test world"));
+            assertTrue(map.illustrated);
+            Field source = MapView.class.getDeclaredField("world");
+            source.setAccessible(true);
+            assertNotNull(source.get(map));
+            assertTrue(((WorldMap) source.get(map)).vector);
+        } finally {
+            controller.pause().stop().destroy();
+            executor.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS);
+            app.getSharedPreferences("world-map", 0).edit().clear().commit();
+            app.getSharedPreferences("map-view", 0).edit().clear().commit();
+        }
+    }
+
+    @Test
+    public void rasterArchiveOverzoomsInAtlas() throws Exception {
+        Bitmap raster = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888);
+        raster.eraseColor(0xffdd6644);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        raster.compress(Bitmap.CompressFormat.PNG, 100, out);
+        File file = database(out.toByteArray(), 1, 1, 1, false);
+        try (WorldMap source = WorldMap.open(app, Uri.fromFile(file), null)) {
+            assertFalse(source.vector);
+            MapView map = new MapView(app);
+            try {
+                map.online = false;
+                map.layout(0, 0, 512, 512);
+                map.zoom = 16;
+                map.cx = MapView.x(90);
+                map.cy = MapView.y(-45);
+                source.image(1, 1, 1);
+                Field loader = WorldMap.class.getDeclaredField("loader");
+                loader.setAccessible(true);
+                ((java.util.concurrent.ExecutorService) loader.get(source)).submit(() -> {}).get();
+                Bitmap image = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888);
+                source.draw(new Canvas(image), map, true);
+                assertEquals(0xffdd6644, image.getPixel(256, 256));
+            } finally {
+                map.close();
+            }
+        }
+    }
+
+    @Test
+    public void realVectorWorldRendersOfflineAndSuppliesBuildingWalls() throws Exception {
+        File file = database(fixture(), 14, 9903, 5122, false);
+        try (WorldMap source = WorldMap.open(app, Uri.fromFile(file), null)) {
+            Mvt.Tile tile = source.tile(14, 9903, 5122, true);
+            assertNotNull(tile);
+            assertFalse(source.buildings(55.748, 37.612, 100).isEmpty());
+            MapView map = new MapView(app);
+            try {
+                map.online = false;
+                map.follow = false;
+                map.layout(0, 0, 768, 768);
+                map.cx = MapView.x(37.612);
+                map.cy = MapView.y(55.748);
+                map.zoom = 17;
+                Bitmap image = Bitmap.createBitmap(768, 768, Bitmap.Config.ARGB_8888);
+                source.draw(new Canvas(image), map, true);
+                HashSet<Integer> colors = new HashSet<>();
+                for (int y = 100; y < 700; y += 5)
+                    for (int x = 20; x < 700; x += 5) colors.add(image.getPixel(x, y));
+                assertTrue(
+                        "World tile must contain real, styled street/building geometry",
+                        colors.size() > 8);
+                Canvas previewCanvas = new Canvas(image);
+                Paint credit = new Paint(3);
+                credit.setColor(0xee30394b);
+                previewCanvas.drawRect(0, 738, 768, 768, credit);
+                credit.setColor(0xffeee7cf);
+                credit.setTextSize(14);
+                previewCanvas.drawText(
+                        "MapNotes · © OpenStreetMap contributors · OpenMapTiles / OpenFreeMap",
+                        12,
+                        758,
+                        credit);
+                File preview = new File("build/rendered/world-map-moscow.png");
+                preview.getParentFile().mkdirs();
+                try (FileOutputStream output = new FileOutputStream(preview)) {
+                    image.compress(Bitmap.CompressFormat.PNG, 100, output);
+                }
+            } finally {
+                map.close();
+            }
+        }
+    }
+
+    @Test
+    public void malformedTilesFailWithoutUnboundedAllocation() throws Exception {
+        for (byte[] bytes :
+                new byte[][] {
+                    {1, 2, 3}, {26, (byte) 255, (byte) 255, (byte) 255, 127}, {26, 1, 0}
+                }) {
+            try {
+                Mvt.decode(bytes);
+                fail("Malformed protobuf must be rejected");
+            } catch (IOException expected) {
+            }
+        }
+    }
+
+    @Test
+    public void wrongArchiveFormatIsRejectedBeforeOfferingAHugeCopy() throws Exception {
+        File file = new File(app.getFilesDir(), "wrong-" + UUID.randomUUID() + ".pmtiles");
+        files.add(file);
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write("PMTiles-not-sqlite-archive".getBytes("US-ASCII"));
+        }
+        try (WorldMap ignored = WorldMap.open(app, Uri.fromFile(file), null)) {
+            fail();
+        } catch (WorldMap.InvalidMap expected) {
+            assertTrue(expected.getMessage().contains(".mbtiles"));
+        }
+    }
+
+    @Test
+    public void seekableFileLargerThanTwoGbIsReadWithoutCopying() throws Exception {
+        File file = new File(app.getFilesDir(), "world-sparse-" + UUID.randomUUID() + ".mbtiles");
+        files.add(file);
+        java.nio.channels.SeekableByteChannel channel =
+                Files.newByteChannel(
+                        file.toPath(),
+                        EnumSet.of(
+                                StandardOpenOption.CREATE_NEW,
+                                StandardOpenOption.WRITE,
+                                StandardOpenOption.SPARSE));
+        channel.close();
+        try (SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(file, null)) {
+            db.execSQL("CREATE TABLE metadata(name TEXT,value TEXT)");
+            db.execSQL(
+                    "INSERT INTO metadata VALUES('name','Large world'),('format','pbf'),('minzoom','0'),('maxzoom','0')");
+            db.execSQL(
+                    "CREATE TABLE tiles(zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_data BLOB,PRIMARY KEY(zoom_level,tile_column,tile_row))");
+            db.execSQL("INSERT INTO tiles VALUES(0,0,0,?)", new Object[] {synthetic()});
+        }
+        try (RandomAccessFile sparse = new RandomAccessFile(file, "rw")) {
+            sparse.setLength(2147483648L + 4096);
+        }
+        long before = file.length();
+        try (WorldMap source = WorldMap.open(app, Uri.fromFile(file), null)) {
+            assertTrue(before > Integer.MAX_VALUE);
+            assertNotNull(source.tile(0, 0, 0, true));
+            assertEquals(before, file.length());
+            assertTrue(source.tileReads <= 2);
+        }
+    }
 }

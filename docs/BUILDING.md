@@ -18,7 +18,7 @@ From the repository root:
 python tools/build.py
 ```
 
-This performs javac (Java 8 bytecode), jar, D8, aapt2 resource compilation/linking, classes.dex packaging and zipalign. The result is `build/MapNotes-1.2.0-unsigned.apk`. **Unsigned APKs are not installable.** Generated files and local signing material are not source files.
+This performs javac (Java 8 bytecode), jar, D8, aapt2 resource compilation/linking, classes.dex packaging and zipalign. The result follows the manifest version, currently `build/MapNotes-1.2.4-unsigned.apk`. **Unsigned APKs are not installable.** Generated files and local signing material are not source files.
 
 To sign a local build, provide an existing keystore that you own outside the checkout and securely set the `MAPNOTES_STORE_PASSWORD` environment variable. Do not paste passwords into shell history, issue reports or commits. The script passes the password to apksigner by environment reference, not as a command-line value:
 
@@ -57,3 +57,5 @@ Public-network probes are opt-in (`MAPNOTES_LIVE_PROBE`, `MAPNOTES_CAPTURED_RESP
 ## Before distributing a changed build
 
 Verify package/versionCode, signing-certificate continuity, apksigner verification, zip alignment, test reports and asset checksums. Test an in-place update with a disposable database/device before relying on a build for irreplaceable data. Never publish local keys, logs, app databases, owner coordinates, unreviewed screenshots or an entire development workspace.
+
+Formatting is also a release gate: follow [the code-formatting standard](FORMATTING.md), run `tools/format_code.py --check` with the pinned formatter dependencies, and run `python tools/test_formatting.py`. Keep authored sources readable; do not commit minified Java, tests or build scripts. Generated artifacts, dependency caches and geographic data are outside the source-formatting scope.

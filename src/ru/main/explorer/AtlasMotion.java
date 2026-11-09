@@ -1,26 +1,248 @@
 package ru.main.explorer;
-import android.animation.*;import android.view.View;import android.view.animation.PathInterpolator;
+
+import android.animation.*;
+import android.view.View;
+import android.view.animation.PathInterpolator;
+
 /** Interruptible UI transforms. Camera reconfiguration runs at the flip midpoint. */
 final class AtlasMotion {
- private static final java.util.WeakHashMap<View,Boolean> bound=new java.util.WeakHashMap<>();
- static final java.util.WeakHashMap<View,ValueAnimator> running=new java.util.WeakHashMap<>();
- interface Frame {void apply(float t);}
- static void frames(View view,long duration,Frame frame,Runnable finish){bind(view);ValueAnimator old=running.remove(view);if(old!=null)old.cancel();if(!enabled()){frame.apply(1);if(finish!=null)finish.run();return;}ValueAnimator animator=ValueAnimator.ofFloat(0,1);running.put(view,animator);animator.setDuration(duration);animator.setInterpolator(EASE);animator.addUpdateListener(a->frame.apply((float)a.getAnimatedValue()));animator.addListener(new AnimatorListenerAdapter(){boolean cancelled;public void onAnimationCancel(Animator a){cancelled=true;}public void onAnimationEnd(Animator a){if(running.get(view)==animator)running.remove(view);if(!cancelled&&finish!=null)finish.run();}});frame.apply(0);animator.start();}
- static void turn(View view,float target,long duration,Runnable finish){float start=view.getRotationY();frames(view,duration,t->view.setRotationY(start+(target-start)*t),finish);}
- static void bind(View v){if(bound.put(v,Boolean.TRUE)!=null)return;v.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){public void onViewAttachedToWindow(View view){}public void onViewDetachedFromWindow(View view){cancel(view);if(view.getStateListAnimator()!=null)view.getStateListAnimator().jumpToCurrentState();settle(view);}});}
- static void cancel(View v){ValueAnimator animator=running.remove(v);if(animator!=null)animator.cancel();v.animate().cancel();settle(v);}
- static final android.view.animation.Interpolator EASE=new PathInterpolator(.2f,0f,0f,1f);
- static boolean enabled(){return ValueAnimator.areAnimatorsEnabled();}
- static void enter(View v){bind(v);v.animate().cancel();if(!enabled()){settle(v);return;}v.setAlpha(0f);v.setTranslationY(AtlasUi.dp(v,10));v.animate().alpha(1f).translationY(0f).setDuration(240).setInterpolator(EASE).start();}
- static void settle(View v){v.setAlpha(1f);v.setTranslationY(0f);v.setTranslationX(0f);v.setScaleX(1f);v.setScaleY(1f);v.setRotationY(0f);}
- static void fromAnchor(View decor,View anchor){bind(decor);decor.post(()->anchorNow(decor,anchor));}
- static void anchorNow(View decor,View anchor){if(!decor.isAttachedToWindow())return;cancel(decor);if(!enabled())return;int[] a=new int[2],d=new int[2];anchor.getLocationOnScreen(a);decor.getLocationOnScreen(d);decor.setPivotX(a[0]+anchor.getWidth()/2f-d[0]);decor.setPivotY(a[1]+anchor.getHeight()/2f-d[1]);frames(decor,320,t->{decor.setScaleX(.08f+.92f*t);decor.setScaleY(.08f+.92f*t);decor.setAlpha(.35f+.65f*t);},null);}
- static void stateChange(View v,boolean active){bind(v);cancel(v);float start=active?.88f:1.10f,dy=AtlasUi.dp(v,active?8:-6);frames(v,380,t->{v.setScaleX(start+(1-start)*t);v.setScaleY(start+(1-start)*t);v.setTranslationY(dy*(1-t));},null);}
- static void reveal(View v){bind(v);v.animate().cancel();if(!enabled()){v.setAlpha(1f);return;}v.setAlpha(0f);v.animate().alpha(1f).setDuration(180).setInterpolator(EASE).start();}
- // Alpha is a RenderNode property: no per-frame camera/geometry changes or input transform.
- static void mapChange(View v){bind(v);v.animate().cancel();v.setAlpha(1f);if(!enabled()||!v.isAttachedToWindow())return;v.setAlpha(.82f);v.animate().alpha(1f).setDuration(180).setInterpolator(EASE).start();}
- static Animator scale(View v,float target,long duration){ObjectAnimator x=ObjectAnimator.ofFloat(v,View.SCALE_X,target),y=ObjectAnimator.ofFloat(v,View.SCALE_Y,target);AnimatorSet set=new AnimatorSet();set.playTogether(x,y);set.setDuration(duration);set.setInterpolator(EASE);return set;}
- static void button(View v){bind(v);if(!enabled()){v.setStateListAnimator(null);v.setScaleX(1f);v.setScaleY(1f);return;}StateListAnimator states=new StateListAnimator();states.addState(new int[]{android.R.attr.state_pressed,android.R.attr.state_enabled},scale(v,.94f,110));states.addState(new int[]{},scale(v,1f,260));v.setStateListAnimator(states);}
- static float nearestAngle(float from,float target){return from+((target-from+540)%360+360)%360-180;}
- static void launch(View root,int[] bounds){Runnable start=()->{if(!root.isAttachedToWindow())return;int[] at=new int[2];root.getLocationOnScreen(at);root.setPivotX(bounds[0]+bounds[2]/2f-at[0]);root.setPivotY(bounds[1]+bounds[3]/2f-at[1]);float sx=Math.max(.03f,Math.min(1,bounds[2]/(float)Math.max(1,root.getWidth()))),sy=Math.max(.03f,Math.min(1,bounds[3]/(float)Math.max(1,root.getHeight())));frames(root,420,t->{root.setScaleX(sx+(1-sx)*t);root.setScaleY(sy+(1-sy)*t);root.setAlpha(.2f+.8f*t);},null);};if(root.isAttachedToWindow()&&root.getWidth()>0)start.run();else root.addOnLayoutChangeListener(new View.OnLayoutChangeListener(){public void onLayoutChange(View v,int l,int t,int r,int b,int ol,int ot,int or,int ob){if(v.getWidth()>0&&v.isAttachedToWindow()){v.removeOnLayoutChangeListener(this);start.run();}}});}
+    private static final java.util.WeakHashMap<View, Boolean> bound = new java.util.WeakHashMap<>();
+    static final java.util.WeakHashMap<View, ValueAnimator> running = new java.util.WeakHashMap<>();
+
+    interface Frame {
+        void apply(float t);
+    }
+
+    static void frames(View view, long duration, Frame frame, Runnable finish) {
+        bind(view);
+        ValueAnimator old = running.remove(view);
+        if (old != null) old.cancel();
+        if (!enabled()) {
+            frame.apply(1);
+            if (finish != null) finish.run();
+            return;
+        }
+        ValueAnimator animator = ValueAnimator.ofFloat(0, 1);
+        running.put(view, animator);
+        animator.setDuration(duration);
+        animator.setInterpolator(EASE);
+        animator.addUpdateListener(a -> frame.apply((float) a.getAnimatedValue()));
+        animator.addListener(
+                new AnimatorListenerAdapter() {
+                    boolean cancelled;
+
+                    public void onAnimationCancel(Animator a) {
+                        cancelled = true;
+                    }
+
+                    public void onAnimationEnd(Animator a) {
+                        if (running.get(view) == animator) running.remove(view);
+                        if (!cancelled && finish != null) finish.run();
+                    }
+                });
+        frame.apply(0);
+        animator.start();
+    }
+
+    static void turn(View view, float target, long duration, Runnable finish) {
+        float start = view.getRotationY();
+        frames(view, duration, t -> view.setRotationY(start + (target - start) * t), finish);
+    }
+
+    static void bind(View v) {
+        if (bound.put(v, Boolean.TRUE) != null) return;
+        v.addOnAttachStateChangeListener(
+                new View.OnAttachStateChangeListener() {
+                    public void onViewAttachedToWindow(View view) {}
+
+                    public void onViewDetachedFromWindow(View view) {
+                        cancel(view);
+                        if (view.getStateListAnimator() != null)
+                            view.getStateListAnimator().jumpToCurrentState();
+                        settle(view);
+                    }
+                });
+    }
+
+    static void cancel(View v) {
+        ValueAnimator animator = running.remove(v);
+        if (animator != null) animator.cancel();
+        v.animate().cancel();
+        settle(v);
+    }
+
+    static final android.view.animation.Interpolator EASE = new PathInterpolator(.2f, 0f, 0f, 1f);
+
+    static boolean enabled() {
+        return ValueAnimator.areAnimatorsEnabled();
+    }
+
+    static void enter(View v) {
+        bind(v);
+        v.animate().cancel();
+        if (!enabled()) {
+            settle(v);
+            return;
+        }
+        v.setAlpha(0f);
+        v.setTranslationY(AtlasUi.dp(v, 10));
+        v.animate().alpha(1f).translationY(0f).setDuration(240).setInterpolator(EASE).start();
+    }
+
+    static void settle(View v) {
+        v.setAlpha(1f);
+        v.setTranslationY(0f);
+        v.setTranslationX(0f);
+        v.setScaleX(1f);
+        v.setScaleY(1f);
+        v.setRotationY(0f);
+    }
+
+    static void fromAnchor(View decor, View anchor) {
+        bind(decor);
+        decor.post(() -> anchorNow(decor, anchor));
+    }
+
+    static void anchorNow(View decor, View anchor) {
+        if (!decor.isAttachedToWindow()) return;
+        cancel(decor);
+        if (!enabled()) return;
+        int[] a = new int[2], d = new int[2];
+        anchor.getLocationOnScreen(a);
+        decor.getLocationOnScreen(d);
+        decor.setPivotX(a[0] + anchor.getWidth() / 2f - d[0]);
+        decor.setPivotY(a[1] + anchor.getHeight() / 2f - d[1]);
+        frames(
+                decor,
+                320,
+                t -> {
+                    decor.setScaleX(.08f + .92f * t);
+                    decor.setScaleY(.08f + .92f * t);
+                    decor.setAlpha(.35f + .65f * t);
+                },
+                null);
+    }
+
+    static void stateChange(View v, boolean active) {
+        bind(v);
+        cancel(v);
+        float start = active ? .88f : 1.10f, dy = AtlasUi.dp(v, active ? 8 : -6);
+        frames(
+                v,
+                380,
+                t -> {
+                    v.setScaleX(start + (1 - start) * t);
+                    v.setScaleY(start + (1 - start) * t);
+                    v.setTranslationY(dy * (1 - t));
+                },
+                null);
+    }
+
+    static void reveal(View v) {
+        bind(v);
+        v.animate().cancel();
+        if (!enabled()) {
+            v.setAlpha(1f);
+            return;
+        }
+        v.setAlpha(0f);
+        v.animate().alpha(1f).setDuration(180).setInterpolator(EASE).start();
+    }
+
+    // Alpha is a RenderNode property: no per-frame camera/geometry changes or input transform.
+    static void mapChange(View v) {
+        bind(v);
+        v.animate().cancel();
+        v.setAlpha(1f);
+        if (!enabled() || !v.isAttachedToWindow()) return;
+        v.setAlpha(.82f);
+        v.animate().alpha(1f).setDuration(180).setInterpolator(EASE).start();
+    }
+
+    static Animator scale(View v, float target, long duration) {
+        ObjectAnimator x = ObjectAnimator.ofFloat(v, View.SCALE_X, target),
+                y = ObjectAnimator.ofFloat(v, View.SCALE_Y, target);
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(x, y);
+        set.setDuration(duration);
+        set.setInterpolator(EASE);
+        return set;
+    }
+
+    static void button(View v) {
+        bind(v);
+        if (!enabled()) {
+            v.setStateListAnimator(null);
+            v.setScaleX(1f);
+            v.setScaleY(1f);
+            return;
+        }
+        StateListAnimator states = new StateListAnimator();
+        states.addState(
+                new int[] {android.R.attr.state_pressed, android.R.attr.state_enabled},
+                scale(v, .94f, 110));
+        states.addState(new int[] {}, scale(v, 1f, 260));
+        v.setStateListAnimator(states);
+    }
+
+    static float nearestAngle(float from, float target) {
+        return from + ((target - from + 540) % 360 + 360) % 360 - 180;
+    }
+
+    static void launch(View root, int[] bounds) {
+        Runnable start =
+                () -> {
+                    if (!root.isAttachedToWindow()) return;
+                    int[] at = new int[2];
+                    root.getLocationOnScreen(at);
+                    root.setPivotX(bounds[0] + bounds[2] / 2f - at[0]);
+                    root.setPivotY(bounds[1] + bounds[3] / 2f - at[1]);
+                    float
+                            sx =
+                                    Math.max(
+                                            .03f,
+                                            Math.min(
+                                                    1,
+                                                    bounds[2]
+                                                            / (float)
+                                                                    Math.max(1, root.getWidth()))),
+                            sy =
+                                    Math.max(
+                                            .03f,
+                                            Math.min(
+                                                    1,
+                                                    bounds[3]
+                                                            / (float)
+                                                                    Math.max(1, root.getHeight())));
+                    frames(
+                            root,
+                            420,
+                            t -> {
+                                root.setScaleX(sx + (1 - sx) * t);
+                                root.setScaleY(sy + (1 - sy) * t);
+                                root.setAlpha(.2f + .8f * t);
+                            },
+                            null);
+                };
+        if (root.isAttachedToWindow() && root.getWidth() > 0) start.run();
+        else
+            root.addOnLayoutChangeListener(
+                    new View.OnLayoutChangeListener() {
+                        public void onLayoutChange(
+                                View v,
+                                int l,
+                                int t,
+                                int r,
+                                int b,
+                                int ol,
+                                int ot,
+                                int or,
+                                int ob) {
+                            if (v.getWidth() > 0 && v.isAttachedToWindow()) {
+                                v.removeOnLayoutChangeListener(this);
+                                start.run();
+                            }
+                        }
+                    });
+    }
 }

@@ -1,13 +1,125 @@
 package ru.main.explorer;
-import android.animation.ValueAnimator;import android.app.Activity;import android.graphics.*;import android.view.*;import android.widget.*;import org.junit.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.*;import static org.junit.Assert.*;
-@RunWith(RobolectricTestRunner.class) @Config(sdk=34)
+
+import android.animation.ValueAnimator;
+import android.app.Activity;
+import android.graphics.*;
+import android.view.*;
+import android.widget.*;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.robolectric.*;
+import org.robolectric.annotation.*;
+import static org.junit.Assert.*;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 34)
 public class MotionTest {
- static void durationScale(float scale){try{java.lang.reflect.Method m=ValueAnimator.class.getDeclaredMethod("setDurationScale",float.class);m.setAccessible(true);m.invoke(null,scale);}catch(Exception e){throw new AssertionError(e);}}
- @After public void restore(){durationScale(1f);}
- @Test public void disabledMotionSettlesImmediately(){durationScale(0);View v=new View(RuntimeEnvironment.getApplication());AtlasMotion.enter(v);assertEquals(1,v.getAlpha(),0);assertEquals(0,v.getTranslationY(),0);AtlasMotion.reveal(v);assertEquals(1,v.getAlpha(),0);AtlasMotion.mapChange(v);assertEquals(1,v.getAlpha(),0);}
- @Test public void bothButtonStylesKeepImmediateClicks(){Button b=new Button(RuntimeEnvironment.getApplication());int[] clicks={0};b.setOnClickListener(v->clicks[0]++);AtlasUi.styleButton(b,true);assertNotNull(b.getStateListAnimator());b.setPressed(true);b.performClick();assertEquals(1,clicks[0]);AtlasUi.apply(b);assertNotNull(b.getStateListAnimator());}
- @Test public void detachedEntrySettles(){Activity a=Robolectric.buildActivity(Activity.class).setup().get();FrameLayout root=new FrameLayout(a);a.setContentView(root);View v=new View(a);root.addView(v);AtlasMotion.enter(v);root.removeView(v);assertEquals(1,v.getAlpha(),0);assertEquals(0,v.getTranslationY(),0);a.finish();}
- @Test public void photoResetDisabledFitsExactMatrix(){durationScale(0);PhotoActivity.ZoomPhoto v=new PhotoActivity.ZoomPhoto(RuntimeEnvironment.getApplication());v.layout(0,0,400,400);v.setImageBitmap(Bitmap.createBitmap(200,100,Bitmap.Config.ARGB_8888));v.zoom=4;v.matrix.postScale(4,4);v.fit();assertEquals(1,v.zoom,0);float[] m=new float[9];v.matrix.getValues(m);assertEquals(2,m[Matrix.MSCALE_X],0);assertEquals(100,m[Matrix.MTRANS_Y],0);assertNull(v.resetMotion);}
- @Test public void touchCancelsPhotoResetWithoutJump(){PhotoActivity.ZoomPhoto v=new PhotoActivity.ZoomPhoto(RuntimeEnvironment.getApplication());v.layout(0,0,400,400);v.setImageBitmap(Bitmap.createBitmap(200,100,Bitmap.Config.ARGB_8888));v.zoom=4;v.fit();assertNotNull(v.resetMotion);MotionEvent e=MotionEvent.obtain(0,0,MotionEvent.ACTION_DOWN,30,40,0);v.onTouchEvent(e);e.recycle();assertNull(v.resetMotion);}
- @Test public void mapTargetsAndInputCoordinatesStayImmediate(){MapView v=new MapView(RuntimeEnvironment.getApplication());try{v.showPlace(55,37);assertEquals(55,v.centerLatitude(),.00001);assertEquals(37,v.centerLongitude(),.00001);assertEquals(18,v.zoom);v.changeZoom(1);assertEquals(19,v.zoom);assertEquals(1,v.getScaleX(),0);assertEquals(0,v.getTranslationX(),0);v.onDetachedFromWindow();assertEquals(1,v.getAlpha(),0);}finally{v.close();}}
+    static void durationScale(float scale) {
+        try {
+            java.lang.reflect.Method m =
+                    ValueAnimator.class.getDeclaredMethod("setDurationScale", float.class);
+            m.setAccessible(true);
+            m.invoke(null, scale);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @After
+    public void restore() {
+        durationScale(1f);
+    }
+
+    @Test
+    public void disabledMotionSettlesImmediately() {
+        durationScale(0);
+        View v = new View(RuntimeEnvironment.getApplication());
+        AtlasMotion.enter(v);
+        assertEquals(1, v.getAlpha(), 0);
+        assertEquals(0, v.getTranslationY(), 0);
+        AtlasMotion.reveal(v);
+        assertEquals(1, v.getAlpha(), 0);
+        AtlasMotion.mapChange(v);
+        assertEquals(1, v.getAlpha(), 0);
+    }
+
+    @Test
+    public void bothButtonStylesKeepImmediateClicks() {
+        Button b = new Button(RuntimeEnvironment.getApplication());
+        int[] clicks = {0};
+        b.setOnClickListener(v -> clicks[0]++);
+        AtlasUi.styleButton(b, true);
+        assertNotNull(b.getStateListAnimator());
+        b.setPressed(true);
+        b.performClick();
+        assertEquals(1, clicks[0]);
+        AtlasUi.apply(b);
+        assertNotNull(b.getStateListAnimator());
+    }
+
+    @Test
+    public void detachedEntrySettles() {
+        Activity a = Robolectric.buildActivity(Activity.class).setup().get();
+        FrameLayout root = new FrameLayout(a);
+        a.setContentView(root);
+        View v = new View(a);
+        root.addView(v);
+        AtlasMotion.enter(v);
+        root.removeView(v);
+        assertEquals(1, v.getAlpha(), 0);
+        assertEquals(0, v.getTranslationY(), 0);
+        a.finish();
+    }
+
+    @Test
+    public void photoResetDisabledFitsExactMatrix() {
+        durationScale(0);
+        PhotoActivity.ZoomPhoto v =
+                new PhotoActivity.ZoomPhoto(RuntimeEnvironment.getApplication());
+        v.layout(0, 0, 400, 400);
+        v.setImageBitmap(Bitmap.createBitmap(200, 100, Bitmap.Config.ARGB_8888));
+        v.zoom = 4;
+        v.matrix.postScale(4, 4);
+        v.fit();
+        assertEquals(1, v.zoom, 0);
+        float[] m = new float[9];
+        v.matrix.getValues(m);
+        assertEquals(2, m[Matrix.MSCALE_X], 0);
+        assertEquals(100, m[Matrix.MTRANS_Y], 0);
+        assertNull(v.resetMotion);
+    }
+
+    @Test
+    public void touchCancelsPhotoResetWithoutJump() {
+        PhotoActivity.ZoomPhoto v =
+                new PhotoActivity.ZoomPhoto(RuntimeEnvironment.getApplication());
+        v.layout(0, 0, 400, 400);
+        v.setImageBitmap(Bitmap.createBitmap(200, 100, Bitmap.Config.ARGB_8888));
+        v.zoom = 4;
+        v.fit();
+        assertNotNull(v.resetMotion);
+        MotionEvent e = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 30, 40, 0);
+        v.onTouchEvent(e);
+        e.recycle();
+        assertNull(v.resetMotion);
+    }
+
+    @Test
+    public void mapTargetsAndInputCoordinatesStayImmediate() {
+        MapView v = new MapView(RuntimeEnvironment.getApplication());
+        try {
+            v.showPlace(55, 37);
+            assertEquals(55, v.centerLatitude(), .00001);
+            assertEquals(37, v.centerLongitude(), .00001);
+            assertEquals(18, v.zoom);
+            v.changeZoom(1);
+            assertEquals(19, v.zoom);
+            assertEquals(1, v.getScaleX(), 0);
+            assertEquals(0, v.getTranslationX(), 0);
+            v.onDetachedFromWindow();
+            assertEquals(1, v.getAlpha(), 0);
+        } finally {
+            v.close();
+        }
+    }
 }

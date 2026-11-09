@@ -1,0 +1,8 @@
+# Keep formatter output stable on Windows and Unix checkouts.
+*.java text eol=lf
+*.py text eol=lf
+*.xml text eol=lf
+*.gradle text eol=lf
+*.properties text eol=lf
+.editorconfig text eol=lf
+.gitattributes text eol=lf
