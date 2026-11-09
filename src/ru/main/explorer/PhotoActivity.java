@@ -12,11 +12,13 @@ public class PhotoActivity extends Activity {
  protected void onPause(){if(store!=null&&note!=null)store.saveNote(id,note.getText().toString());super.onPause();}
  protected void onDestroy(){if(store!=null)store.close();super.onDestroy();}
  static class ZoomPhoto extends ImageView {
-  Matrix matrix=new Matrix();float zoom=1;ScaleGestureDetector scale;GestureDetector gestures;
+  Matrix matrix=new Matrix();float zoom=1;ScaleGestureDetector scale;GestureDetector gestures;android.animation.ValueAnimator resetMotion;final Runnable pendingFit=this::fit;
   ZoomPhoto(android.content.Context c){super(c);setScaleType(ScaleType.MATRIX);scale=new ScaleGestureDetector(c,new ScaleGestureDetector.SimpleOnScaleGestureListener(){public boolean onScale(ScaleGestureDetector d){float next=Math.max(1,Math.min(8,zoom*d.getScaleFactor()));matrix.postScale(next/zoom,next/zoom,d.getFocusX(),d.getFocusY());zoom=next;setImageMatrix(matrix);return true;}});gestures=new GestureDetector(c,new GestureDetector.SimpleOnGestureListener(){public boolean onDown(MotionEvent e){return true;}public boolean onScroll(MotionEvent a,MotionEvent b,float dx,float dy){if(zoom>1){matrix.postTranslate(-dx,-dy);setImageMatrix(matrix);}return true;}public boolean onDoubleTap(MotionEvent e){fit();return true;}});}
-  public void setImageBitmap(Bitmap b){super.setImageBitmap(b);post(this::fit);}
-  protected void onSizeChanged(int w,int h,int oldw,int oldh){super.onSizeChanged(w,h,oldw,oldh);fit();}
-  void fit(){if(getDrawable()==null||getWidth()==0)return;float w=getDrawable().getIntrinsicWidth(),h=getDrawable().getIntrinsicHeight(),s=Math.min(getWidth()/w,getHeight()/h);matrix.reset();matrix.postScale(s,s);matrix.postTranslate((getWidth()-w*s)/2,(getHeight()-h*s)/2);zoom=1;setImageMatrix(matrix);}
-  public boolean onTouchEvent(MotionEvent e){scale.onTouchEvent(e);if(!scale.isInProgress())gestures.onTouchEvent(e);return true;}
+  public void setImageBitmap(Bitmap b){removeCallbacks(pendingFit);cancelReset();zoom=1;super.setImageBitmap(b);post(pendingFit);if(b!=null)AtlasMotion.reveal(this);}
+  protected void onSizeChanged(int w,int h,int oldw,int oldh){super.onSizeChanged(w,h,oldw,oldh);cancelReset();zoom=1;fit();}
+  void cancelReset(){if(resetMotion!=null){resetMotion.cancel();resetMotion=null;}}
+  void fit(){if(getDrawable()==null||getWidth()==0||getHeight()==0)return;cancelReset();float w=getDrawable().getIntrinsicWidth(),h=getDrawable().getIntrinsicHeight();if(w<=0||h<=0)return;float s=Math.min(getWidth()/w,getHeight()/h);Matrix target=new Matrix();target.postScale(s,s);target.postTranslate((getWidth()-w*s)/2,(getHeight()-h*s)/2);if(zoom<=1||!AtlasMotion.enabled()){matrix.set(target);zoom=1;setImageMatrix(matrix);return;}final float startZoom=zoom;final float[] from=new float[9],to=new float[9],frame=new float[9];matrix.getValues(from);target.getValues(to);resetMotion=android.animation.ValueAnimator.ofFloat(0,1);resetMotion.setDuration(260);resetMotion.setInterpolator(AtlasMotion.EASE);resetMotion.addUpdateListener(a->{float t=(float)a.getAnimatedValue();for(int i=0;i<9;i++)frame[i]=from[i]+(to[i]-from[i])*t;matrix.setValues(frame);zoom=startZoom+(1-startZoom)*t;setImageMatrix(matrix);});resetMotion.start();}
+  protected void onDetachedFromWindow(){removeCallbacks(pendingFit);cancelReset();AtlasMotion.cancel(this);super.onDetachedFromWindow();}
+  public boolean onTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN)cancelReset();scale.onTouchEvent(e);if(!scale.isInProgress())gestures.onTouchEvent(e);return true;}
  }
 }

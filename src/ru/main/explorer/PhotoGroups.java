@@ -2,7 +2,7 @@ package ru.main.explorer;
 import java.util.*;
 /** Screen-space connected components: even a chain of overlapping markers stays selectable. */
 final class PhotoGroups {
- static final class Group {float x,y,anchorX,anchorY;final ArrayList<Store.Photo> photos=new ArrayList<>();Group(float x,float y){this.x=x;this.y=y;anchorX=x;anchorY=y;}}
+ static final class Group {float x,y,anchorX,anchorY,opacity=1,sizeScale=1;boolean exiting;final ArrayList<Store.Photo> photos=new ArrayList<>();Group(float x,float y){this.x=x;this.y=y;anchorX=x;anchorY=y;}}
  /** One callout per photo. Exact GPS anchor is never moved by screen layout. */
  static ArrayList<Group> spread(ArrayList<Store.Photo> photos,float[] xs,float[] ys,float size,int width,int height){
   ArrayList<Group> result=new ArrayList<>();float gap=size+8;
