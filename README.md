@@ -1,64 +1,132 @@
-# MapNotes
+<p align="center">
+  <img src="res/mipmap-xxxhdpi/ic_launcher.png" width="88" height="88" alt="MapNotes icon">
+</p>
 
-An Android walking journal that turns your route into an explored map, with geotagged photos and private notes.
+<h1 align="center">MapNotes</h1>
 
-- Illustrated atlas and optional satellite layer; exploration follows your walks, with a 100 m maximum reveal radius and approximate building-wall occlusion.
-- Foreground GPS recording, separate walk history, elapsed time and conservative recorded distance.
-- Built-in Camera2 camera, photo-size selection, orientation handling and supported continuous camera light.
-- Private photo viewer, notes, map markers and explicit export of a photo copy to the system gallery.
-- Resumable regional atlas downloads; optional satellite downloads; read-only vector/raster MBTiles import.
-- English and Russian, following the system language by default. Change it in **⋯ → App language**.
+<p align="center">
+  <strong>Your walks, revealed on a map.</strong><br>
+  A local-first Android walking journal with geotagged photos and private notes.
+</p>
 
-**Android 8.0+ (API 26); APK target API 35.** This is an independent walking journal, not turn-by-turn navigation or a safety/navigation instrument. Detailed world maps are not bundled in the APK.
+<p align="center">
+  <a href="https://github.com/dotliberty/MapNotes/releases/tag/v1.2.4">Download 1.2.4</a> ·
+  <a href="#your-first-walk">Get started</a> ·
+  <a href="docs/1.2.4-RELEASE.md">Release notes</a> ·
+  <a href="README.ru.md">Русский</a>
+</p>
 
-## Install
+<p align="center">Android 8.0+ · English / Русский · No account required</p>
 
-Download `MapNotes-1.2.4.apk` and `SHA256SUMS` from the [1.2.4 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.2.4). Compare the APK SHA-256 with the checksum file before installation, then allow installation from your chosen browser/file manager if Android asks.
+---
 
-**Existing MapNotes users: install over the previous version. Do not uninstall or clear app data.** The release keeps the `ru.main.explorer` package, existing signing certificate and SQLite v3 schema. Signing compatibility and migration logic are checked locally; an update of a real user's phone/database has not been exercised here. A separately signed local build cannot update the published APK.
+## A journal of places you have actually been
 
-There is no full route/photo backup or restore workflow. Uninstalling or clearing storage removes private data. Exporting photos to the system gallery is not a route/database backup.
+Start a walk, explore a neighbourhood and take photos along the way. MapNotes records your route, reveals the map around accepted walking points and keeps your photos and notes connected to their locations.
 
-## 1.2.4
+It is a walking journal, not a route planner or turn-by-turn navigation app. The illustrated atlas is a presentation of real map data, not a game world.
 
-1.2.4 includes an illustrated atlas-style interface, framed menus/gallery/history, redesigned camera controls, safer snapshot-based camera switching and consistently formatted sources. Continuous map zoom, collision-aware photo markers, manual camera/lens selection and existing GPS/photo workflows remain. See [release notes](docs/1.2.4-RELEASE.md), [design verification](docs/1.2.4-DESIGN.md), [camera safety verification](docs/1.2.4-CAMERA-SAFETY.md) and [source-formatting standard](docs/FORMATTING.md). Earlier beta/stage verification documents are historical, not installation instructions for the official APK.
+### What you can do
 
-## Screenshots
+- **See your exploration grow.** Reveal areas along your walks, with a maximum 100 m radius and approximate building-wall occlusion. Zoom and move around the map with continuous transitions.
+- **Keep a walk history.** Start, finish or resume a walk; review its route, elapsed time and associated photos. Recording uses a visible foreground-service notification.
+- **Photograph a place, not just a moment.** Use the built-in camera, select supported lenses/photo sizes and adjust zoom where the device allows it. Open a photo from the map and add a note.
+- **Keep originals private.** Photos stay inside MapNotes unless you choose **Save to gallery**, which creates a separate copy.
+- **Take available maps offline.** Download an atlas region or connect a compatible local `.mbtiles` file. Regional downloads support pause and continuation.
+- **Use English or Russian.** Follow the system language or choose one in **⋯ → App language**.
 
-These are **Robolectric Canvas renders of the actual UI using synthetic test data**, not photographs of a physical Android device or a real user's route. They demonstrate the layouts and language variants; hardware camera preview is not simulated as a real camera image.
+## A look inside
 
-| English | Русский |
+<table>
+  <tr>
+    <th>Explore</th>
+    <th>Photo journal</th>
+    <th>Camera</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/atlas-124.png" width="250" alt="Atlas view with map controls and walk actions"></td>
+    <td><img src="docs/screenshots/gallery-124.png" width="250" alt="Test photo catalog with framed entries, dates and notes"></td>
+    <td><img src="docs/screenshots/camera-124.png" width="250" alt="Camera layout with side controls, gallery, shutter and mode selection"></td>
+  </tr>
+</table>
+
+These are **native Canvas renders of the application in Robolectric**, not screenshots from a physical phone. The map example uses a checked-in public Moscow vector tile; journal entries are test fixtures. The black camera preview is intentional: layout tests do not provide a real camera feed.
+
+[English interface](docs/screenshots/main-en.png) · [Russian interface](docs/screenshots/main-ru.png)
+
+## Install or update
+
+1. Open the [1.2.4 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.2.4).
+2. Download **`MapNotes-1.2.4.apk`**. `SHA256SUMS` is available alongside it for checking the download's integrity.
+3. Open the APK on your Android device and allow installation from your browser/file manager if prompted.
+
+**Already using the official MapNotes app? Install the new APK over it. Do not uninstall the app or clear its storage.** The official release keeps the same package and signing certificate. An APK with `-debug` in its name is a separate test app, not an update to the official installation.
+
+> There is no complete journal backup/restore feature yet. Uninstalling or clearing storage removes app-private routes, photos and notes. Exporting a photo to the gallery does not back up your journal.
+
+**Requirements:** Android 8.0 or newer. Precise location and system GPS are needed for exploration and geotagged photos. Camera/lens capabilities depend on the device.
+
+## Your first walk
+
+1. **Allow precise location** and turn on system location/GPS. Wait for a current fix.
+2. **Choose Start walk.** The recording notification provides a stop action. Screen-off recording remains subject to Android and device-vendor background restrictions.
+3. **Tap + photo** when you want to remember a place. A photo requires a fresh location fix; its original stays in MapNotes.
+4. **Finish the walk.** Open **Walk history** to review it, or select a photo on the map to view it and edit its note.
+5. **Prepare offline detail before you need it.** Try a small 1–4 km atlas region first, or connect an existing compatible MBTiles map.
+
+Opening the map can also record exploration points outside an explicitly started walk. Those points do not create invented entries in walk history. Recorded distance is conservative; elapsed walk time includes waiting and interruptions.
+
+## Maps and offline use
+
+The APK contains a **world overview**, not a detailed map of the planet. Street detail comes from downloaded regions or a map you connect.
+
+| Source | What it provides |
 | --- | --- |
-| ![English interface](docs/screenshots/main-en.png) | ![Русский интерфейс](docs/screenshots/main-ru.png) |
+| Bundled Natural Earth overview | Broad world outlines; no detailed street coverage. |
+| Regional atlas downloads | OpenStreetMap streets/buildings obtained through public Overpass servers. |
+| Local `.mbtiles` map | Read-only raster or supported MVT/PBF vector data, including compatible OpenMapTiles/Protomaps-style layers. |
+| Optional satellite layer | EOX Sentinel-2 cloudless **2016** mosaic, approximately 10 m/pixel; not current high-resolution imagery. |
 
-## First walk
+Previously downloaded data can be viewed without a network connection. Downloads and online layers require access to their providers; public servers may time out or rate-limit requests. Pausing network activity does not stop GPS recording.
 
-1. Grant precise location access and enable system location/GPS.
-2. Select **Start walk** for foreground recording, including while the screen is off subject to Android restrictions. A notification provides **Stop**.
-3. Take a photo after a fresh location fix. Photos are private to MapNotes until you explicitly export a copy.
-4. Finish the walk and open **Walk history** for recorded distance, elapsed time and photos from the full period.
-5. For offline detail, download a small atlas region first (1–4 km is a sensible initial test) or connect a compatible local MBTiles file. Pause network activity separately from GPS recording.
+A connected MBTiles file is opened directly where the Android file provider allows it. Otherwise, MapNotes needs space for a local copy. Only one external map is active at a time. PMTiles, Mapsforge `.map` and raw `.osm.pbf` are not supported imports.
 
-Map display while the main screen is open can also record exploration points; those are not invented historical walk entries. Interrupted walks can be continued in a new route segment or ended explicitly. Elapsed time includes waiting and interruptions.
+[Map sources and attribution](docs/ATTRIBUTIONS.md) · [Detailed limitations](docs/KNOWN-LIMITATIONS.md)
 
-## Maps
+## Privacy, without an account
 
-The built-in Natural Earth data is a world overview, not detailed street coverage. Regional atlas downloads use OpenStreetMap geometry via public Overpass servers. Satellite imagery is the older EOX Sentinel-2 cloudless 2016 mosaic, roughly 10 m/pixel—not live or high-resolution imagery.
+Routes, original photos and notes are stored on the device. MapNotes does not implement a developer-operated sync service, advertising/analytics SDK or automatic crash-report upload.
 
-Compatible local `.mbtiles` files may contain raster tiles or MVT/PBF vector tiles with OpenMapTiles/Protomaps-style layers. The file picker first attempts read-only direct access. Providers that cannot support that require a copy into app storage, which needs additional disk space equal to the source file. PMTiles, Mapsforge `.map`, raw `.osm.pbf` and unextracted archives are not supported. Only one external MBTiles source is active at once. Satellite data is separate from a vector map.
+**Local-first does not mean anonymous online maps.** Map providers receive requested areas/tiles, your IP address and ordinary connection metadata. A photo exported to the system gallery may also be backed up by your gallery/cloud settings.
 
-Large regional downloads can take hours and depend on public server availability, storage and Android background limits. Partial files support continuation but do not mean the whole region is ready. No complete planet dataset is included or claimed to have been downloaded/tested.
+[Read the privacy and permissions guide](docs/PRIVACY.md) before relying on the app for sensitive locations or photos.
 
-## Privacy, tests and building
+## Status and limitations
 
-- [Privacy and permissions](docs/PRIVACY.md)
-- [Build and test guide](docs/BUILDING.md)
-- [Known limitations and verification scope](docs/KNOWN-LIMITATIONS.md)
-- [Map data and third-party attribution](docs/ATTRIBUTIONS.md)
-- [MPL 2.0 license](LICENSE) and [scope / third-party exceptions](LICENSE-NOTICE.md)
+1.2.4 introduces the illustrated interface, redesigned camera controls, camera-switch safety fixes and readable, consistently formatted source code.
 
-No account, analytics backend or automatic crash upload is implemented. Network map providers can see requested map areas and normal connection metadata. Routes, private photos and notes are stored on the device. See the privacy document for important exceptions and export implications.
+The release verification run completed **256 Android/JVM tests**, with **3 external-data checks skipped** and no failures. Formatting, resource, geometry, metadata and signing checks also passed. These are local software checks, **not a claim of physical-device camera/GPS acceptance or guaranteed frame rate**.
 
-## License
+- GPS accuracy and background recording depend on reception, Android and the device vendor.
+- Lens selection, zoom, photo sizes and camera light depend on advertised hardware support.
+- Exploration approximates visibility from 2D geometry; it does not model real terrain or line of sight.
+- Dense photo collections and long histories can still need time to load or redraw.
+- MapNotes is not intended for emergency navigation or safety-critical decisions.
 
-The original MapNotes software source is licensed under **Mozilla Public License 2.0 (MPL-2.0)**. See [LICENSE](LICENSE) for the complete terms and [LICENSE-NOTICE.md](LICENSE-NOTICE.md) for coverage and exceptions. Third-party map data and test fixtures retain their own terms. Original illustration/image assets are not separately licensed by this software-license selection.
+If something goes wrong, describe your Android/device model, app version and the steps that trigger it. A local crash report can be viewed and explicitly copied from the map menu; review it for private information before sharing.
+
+## Build, test and contribute
+
+The app uses Java and Android platform APIs. The separate test harness uses Gradle/Robolectric. Follow the build guide for the toolchain, APK packaging and signing instructions.
+
+- [Build and test](docs/BUILDING.md)
+- [Code style and formatting checks](docs/FORMATTING.md)
+- [1.2.4 release notes](docs/1.2.4-RELEASE.md)
+- [UI verification](docs/1.2.4-DESIGN.md) and [camera-switch regressions](docs/1.2.4-CAMERA-SAFETY.md)
+- [Experimental imagery-assisted tracing](docs/IMAGERY-TRACE.md) — separate beta feature; its earlier version notes are historical.
+
+Keep changes focused, retain EN/RU strings and include regression tests where appropriate. Do not commit private signing keys, credentials, personal routes or photos. An independently signed build cannot update the official app while preserving its Android installation identity.
+
+## License and attribution
+
+Original software source is licensed under **[Mozilla Public License 2.0](LICENSE)**. That does not separately license map datasets or illustration assets. See [license scope and exceptions](LICENSE-NOTICE.md), [data attribution](docs/ATTRIBUTIONS.md) and [decorative-asset provenance](assets/atlas124/SOURCES.md).

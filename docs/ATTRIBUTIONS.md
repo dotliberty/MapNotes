@@ -1,6 +1,6 @@
 # Attribution and third-party data
 
-MapNotes draws its own UI and map styling. It does not bundle game graphics, proprietary game map tiles or logos.
+MapNotes draws its native UI frames and map styling in code. The small decorative illustration crops introduced in 1.2.4 come from an owner-supplied reference; their provenance and licensing limits are documented in [assets/atlas124/SOURCES.md](../assets/atlas124/SOURCES.md). The software license does not separately license those illustrations.
 
 ## OpenStreetMap
 
