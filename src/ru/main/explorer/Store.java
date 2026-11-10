@@ -3,38 +3,47 @@ package ru.main.explorer;
 import android.content.*;
 import android.database.*;
 import android.database.sqlite.*;
+
 import java.util.*;
 
 public class Store extends SQLiteOpenHelper {
     public Store(Context c) {
-        super(c, "walks.db", null, 4);
+        super(c, "walks.db", null, 6);
     }
 
     public void onCreate(SQLiteDatabase d) {
         d.execSQL(
-                "CREATE TABLE points(id INTEGER PRIMARY KEY,lat REAL,lon REAL,acc REAL,t INTEGER,session INTEGER)");
+                "CREATE TABLE points(id INTEGER PRIMARY KEY,lat REAL,lon REAL,acc REAL,t"
+                        + " INTEGER,session INTEGER)");
         createPhotos(d);
         createWalks(d);
         MovementStore.createSchema(d);
+        SpawnZoneStore.createSchema(d);
     }
 
     private void createPhotos(SQLiteDatabase d) {
         d.execSQL(
-                "CREATE TABLE IF NOT EXISTS photos(id INTEGER PRIMARY KEY,lat REAL NOT NULL,lon REAL NOT NULL,acc REAL NOT NULL,path TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',created INTEGER NOT NULL)");
+                "CREATE TABLE IF NOT EXISTS photos(id INTEGER PRIMARY KEY,lat REAL NOT NULL,lon"
+                        + " REAL NOT NULL,acc REAL NOT NULL,path TEXT NOT NULL,note TEXT NOT NULL"
+                        + " DEFAULT '',created INTEGER NOT NULL)");
     }
 
     public void onUpgrade(SQLiteDatabase d, int a, int b) {
         if (a < 2) createPhotos(d);
         if (a < 3) createWalks(d);
         if (a < 4) MovementStore.createSchema(d);
+        if (a < 5) SpawnZoneStore.createSchema(d);
+        if (a < 6) SpawnZoneStore.createSchema(d);
     }
 
     private void createWalks(SQLiteDatabase d) {
         d.execSQL(
-                "CREATE TABLE walks(id INTEGER PRIMARY KEY,started INTEGER NOT NULL,ended INTEGER)");
+                "CREATE TABLE walks(id INTEGER PRIMARY KEY,started INTEGER NOT NULL,ended"
+                        + " INTEGER)");
         d.execSQL("CREATE UNIQUE INDEX one_open_walk ON walks((1)) WHERE ended IS NULL");
         d.execSQL(
-                "CREATE TABLE walk_sessions(session INTEGER PRIMARY KEY AUTOINCREMENT,walk INTEGER NOT NULL)");
+                "CREATE TABLE walk_sessions(session INTEGER PRIMARY KEY AUTOINCREMENT,walk INTEGER"
+                        + " NOT NULL)");
         d.execSQL("CREATE INDEX walk_session_owner ON walk_sessions(walk)");
         d.execSQL("CREATE INDEX photos_time ON photos(created)");
         d.execSQL("CREATE INDEX points_session ON points(session,id)");
@@ -113,7 +122,8 @@ public class Store extends SQLiteOpenHelper {
         try (Cursor c =
                 getReadableDatabase()
                         .rawQuery(
-                                "SELECT p.lat,p.lon,p.session,p.t FROM points p JOIN walk_sessions s ON p.session=-s.session WHERE s.walk=? ORDER BY p.id",
+                                "SELECT p.lat,p.lon,p.session,p.t FROM points p JOIN walk_sessions"
+                                        + " s ON p.session=-s.session WHERE s.walk=? ORDER BY p.id",
                                 new String[] {"" + walk})) {
             while (c.moveToNext())
                 out.add(new double[] {c.getDouble(0), c.getDouble(1), c.getLong(2), c.getLong(3)});
@@ -140,7 +150,8 @@ public class Store extends SQLiteOpenHelper {
         try (Cursor c =
                 getReadableDatabase()
                         .rawQuery(
-                                "SELECT id,lat,lon,acc,path,note,created FROM photos WHERE created>=? AND created<? ORDER BY created,id",
+                                "SELECT id,lat,lon,acc,path,note,created FROM photos WHERE"
+                                        + " created>=? AND created<? ORDER BY created,id",
                                 new String[] {
                                     "" + w.started, "" + (w.ended == 0 ? now + 1 : w.ended)
                                 })) {
@@ -181,7 +192,8 @@ public class Store extends SQLiteOpenHelper {
         try (Cursor c =
                 getReadableDatabase()
                         .rawQuery(
-                                "SELECT id,lat,lon,acc,path,note,created FROM photos ORDER BY created DESC,id DESC",
+                                "SELECT id,lat,lon,acc,path,note,created FROM photos ORDER BY"
+                                        + " created DESC,id DESC",
                                 null)) {
             while (c.moveToNext()) r.add(new Photo(c));
         }
@@ -256,11 +268,14 @@ public class Store extends SQLiteOpenHelper {
         try (Cursor c =
                 getReadableDatabase()
                         .rawQuery(
-                                "SELECT p.id,p.lat,p.lon,p.session,p.t,m.type FROM points p LEFT JOIN motion_points m ON p.id=m.point WHERE p.id>? ORDER BY p.id LIMIT ?",
+                                "SELECT p.id,p.lat,p.lon,p.session,p.t,m.type,p.acc FROM points p LEFT"
+                                        + " JOIN motion_points m ON p.id=m.point WHERE p.id>? ORDER BY"
+                                        + " p.id LIMIT ?",
                                 new String[] {"" + id, "" + limit})) {
             while (c.moveToNext()) {
                 page.lastId = c.getLong(0);
-                if (!reveals(c.getString(5))) continue;
+                if (!reveals(c.getString(5)) || c.getDouble(6) <= 0 || c.getDouble(6) > 30)
+                    continue;
                 page.points.add(
                         c.isNull(5)
                                 ? new double[] {
@@ -283,10 +298,12 @@ public class Store extends SQLiteOpenHelper {
         try (Cursor c =
                 getReadableDatabase()
                         .rawQuery(
-                                "SELECT p.lat,p.lon,p.session,p.t,m.type,p.id FROM points p LEFT JOIN motion_points m ON p.id=m.point ORDER BY p.id",
+                                "SELECT p.lat,p.lon,p.session,p.t,m.type,p.id,p.acc FROM points p LEFT"
+                                        + " JOIN motion_points m ON p.id=m.point ORDER BY p.id",
                                 null)) {
             while (c.moveToNext()) {
-                if (!reveals(c.getString(4))) continue;
+                if (!reveals(c.getString(4)) || c.getDouble(6) <= 0 || c.getDouble(6) > 30)
+                    continue;
                 r.add(
                         c.isNull(4)
                                 ? new double[] {

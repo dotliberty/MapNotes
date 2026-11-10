@@ -34,6 +34,7 @@ public class MainActivity extends Activity implements android.location.LocationL
     private final ArrayList<double[]> loadedPoints = new ArrayList<>();
     private android.location.Location lastDisplay;
     private boolean wasWalking;
+    private SpawnZoneController spawnZoneController;
     private Button onlineButton;
     private Button offlineButton;
     private TextView downloadStatus;
@@ -113,6 +114,7 @@ public class MainActivity extends Activity implements android.location.LocationL
         map = new MapView(this, true);
         frame.addView(map, new FrameLayout.LayoutParams(-1, -1));
         map.setPhotoTapListener(this::showPhotos);
+        spawnZoneController = new SpawnZoneController(this, map);
         LinearLayout photoActions = new LinearLayout(this);
         Button take = button(Language.text(this, R.string.take_photo)),
                 gallery = button(Language.text(this, R.string.my_photos));
@@ -195,8 +197,7 @@ public class MainActivity extends Activity implements android.location.LocationL
         start.setOnClickListener(
                 v -> {
                     if (WalkService.running) {
-                        store.finishWalk(System.currentTimeMillis());
-                        stopService(new Intent(this, WalkService.class));
+                        startService(new Intent(this, WalkService.class).setAction("STOP"));
                         foregroundSession = System.currentTimeMillis();
                         liveFilter = new GpsFilter();
                         refresh();
@@ -574,7 +575,9 @@ public class MainActivity extends Activity implements android.location.LocationL
                 Language.text(
                         this,
                         WalkService.running
-                                ? "finish_walk"
+                                ? (WalkService.zoneMonitoring
+                                        ? "zone_stop_monitoring"
+                                        : "finish_walk")
                                 : store.openWalk() != null ? "resume_walk" : "start_walk"));
     }
 
@@ -728,6 +731,11 @@ public class MainActivity extends Activity implements android.location.LocationL
             }
             return;
         }
+        try (SpawnZoneStore zones = new SpawnZoneStore(this)) {
+            if (!zones.list().isEmpty()) {
+                return;
+            }
+        }
         if (!l.hasAccuracy() || l.isFromMockProvider() || (l.hasSpeed() && l.getSpeed() > 4.5f))
             return;
         long age = SystemClock.elapsedRealtimeNanos() - l.getElapsedRealtimeNanos();
@@ -796,6 +804,7 @@ public class MainActivity extends Activity implements android.location.LocationL
 
     protected void onDestroy() {
         destroyed = true;
+        if (spawnZoneController != null) spawnZoneController.close();
         dataWorker.shutdownNow();
         map.close();
         store.close();
@@ -822,7 +831,8 @@ public class MainActivity extends Activity implements android.location.LocationL
             Language.text(this, R.string.disconnect_map),
             Language.text(this, "language"),
             Language.text(this, "imagery_title"),
-            getString(R.string.motion_title)
+            getString(R.string.motion_title),
+            getString(R.string.zones_title)
         };
         new AtlasUi.DialogBuilder(this, anchor)
                 .setTitle(Language.text(this, "map_menu"))
@@ -841,6 +851,7 @@ public class MainActivity extends Activity implements android.location.LocationL
                             else if (w == 6) MapImport.catalog(this);
                             else if (w == 7) map.disconnectWorld();
                             else if (w == 8) Language.show(this);
+                            else if (w == 11) spawnZoneController.show();
                             else if (w == 10)
                                 startActivityForResult(
                                         new Intent(this, MovementActivity.class), 130);
@@ -930,6 +941,10 @@ public class MainActivity extends Activity implements android.location.LocationL
 
     protected void onActivityResult(int r, int result, Intent data) {
         super.onActivityResult(r, result, data);
+        if (r == ZoneShapeActivity.REQUEST) {
+            if (spawnZoneController != null) spawnZoneController.shapeResult(data);
+            return;
+        }
         if (r == 130) {
             recreate(); // Reload exploration after an explicit historical movement correction.
             return;

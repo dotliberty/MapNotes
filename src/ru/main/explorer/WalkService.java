@@ -7,7 +7,9 @@ import android.location.*;
 import android.os.*;
 
 public class WalkService extends Service implements LocationListener {
+    // True while the explicitly enabled GPS service monitors, including waiting inside zones.
     public static volatile boolean running = false;
+    public static volatile boolean zoneMonitoring = false;
     public static volatile String status = "";
     private static volatile StatusText statusText = new StatusText("start_hint");
     private LocationManager manager;
@@ -15,6 +17,11 @@ public class WalkService extends Service implements LocationListener {
     private TripGpsFilter filter;
     private long walkId;
     private long session;
+    private SpawnZoneStore zones;
+    private Boolean pendingInside;
+    private long pendingSince;
+    private int pendingCount;
+    private java.util.List<SpawnZone> previousZones = java.util.Collections.emptyList();
     private boolean foreground;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final SharedPreferences.OnSharedPreferenceChangeListener languageChanged =
@@ -39,6 +46,7 @@ public class WalkService extends Service implements LocationListener {
         getSharedPreferences(Language.PREFS, 0)
                 .registerOnSharedPreferenceChangeListener(languageChanged);
         store = new Store(this);
+        zones = new SpawnZoneStore(this);
         filter = new TripGpsFilter();
         MotionRuntime.reset(this);
         session = System.currentTimeMillis();
@@ -52,6 +60,9 @@ public class WalkService extends Service implements LocationListener {
     void setStatus(String key, Object... args) {
         statusText = new StatusText(key, args);
         status = currentStatus(this);
+        if (foreground)
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE))
+                    .notify(1, notification());
     }
 
     Notification notification() {
@@ -75,9 +86,13 @@ public class WalkService extends Service implements LocationListener {
                         PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, "walk")
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentTitle(Language.text(this, R.string.mapnotes_walk_in_progress))
-                .setContentText(
-                        Language.text(this, R.string.gps_reveals_the_map_tap_stop_to_finish))
+                .setContentTitle(
+                        Language.text(
+                                this,
+                                zoneMonitoring
+                                        ? R.string.zone_monitoring
+                                        : R.string.mapnotes_walk_in_progress))
+                .setContentText(currentStatus(this))
                 .setContentIntent(open)
                 .addAction(
                         new Notification.Action.Builder(
@@ -88,14 +103,24 @@ public class WalkService extends Service implements LocationListener {
     }
 
     public int onStartCommand(Intent i, int flags, int id) {
+        if (i == null) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         if (i != null && "STOP".equals(i.getAction())) {
             running = false;
             foreground = false;
             store.finishWalk(System.currentTimeMillis());
+            walkId = 0;
+            manager.removeUpdates(this);
+            MotionRuntime.stop(this);
             stopSelf();
             return START_NOT_STICKY;
         }
         if (running) return START_NOT_STICKY;
+        filter = new TripGpsFilter();
+        pendingInside = null;
+        zoneMonitoring = !zones.list().isEmpty();
         Notification notification = notification();
         foreground = true;
         if (Build.VERSION.SDK_INT >= 29)
@@ -103,8 +128,7 @@ public class WalkService extends Service implements LocationListener {
         else startForeground(1, notification);
         try {
             manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
-            walkId = store.startWalk(System.currentTimeMillis());
-            session = store.newWalkSession(walkId);
+            if (zones.list().isEmpty()) beginWalk();
             running = true;
             MotionRuntime.start(this);
             setStatus("finding_precise_gps");
@@ -124,6 +148,37 @@ public class WalkService extends Service implements LocationListener {
         String why = filter.accept(l, SystemClock.elapsedRealtimeNanos());
         if (why == null) {
             try {
+                java.util.List<SpawnZone> snapshot = zones.list();
+                if (!snapshot.equals(previousZones)) {
+                    pendingInside = null;
+                    previousZones = snapshot;
+                }
+                zoneMonitoring = !snapshot.isEmpty();
+                if (!snapshot.isEmpty()) {
+                    boolean inside = false;
+                    for (SpawnZone zone : snapshot)
+                        if (zone.contains(l.getLatitude(), l.getLongitude())) inside = true;
+                    if (pendingInside == null
+                            || pendingInside != inside
+                            || filter.getBreakSegment()) {
+                        pendingInside = inside;
+                        pendingSince = l.getElapsedRealtimeNanos();
+                        pendingCount = 1;
+                    } else pendingCount++;
+                    // Three accepted fixes over five seconds suppress single-fix boundary jitter.
+                    if (pendingCount < 3
+                            || l.getElapsedRealtimeNanos() - pendingSince < 5_000_000_000L) {
+                        setStatus("zone_confirming");
+                        return;
+                    }
+                    if (inside) {
+                        store.finishWalk(System.currentTimeMillis());
+                        walkId = 0;
+                        setStatus("zone_inside");
+                        return;
+                    }
+                } else pendingInside = null;
+                if (walkId == 0) beginWalk();
                 if (filter.getBreakSegment()) session = store.newWalkSession(walkId);
                 String type =
                         MotionRuntime.type(this, l.hasSpeed() ? l.getSpeed() : Double.NaN).name();
@@ -140,6 +195,11 @@ public class WalkService extends Service implements LocationListener {
                 stopSelf();
             }
         } else setStatus(why);
+    }
+
+    private void beginWalk() {
+        walkId = store.startWalk(System.currentTimeMillis());
+        session = store.newWalkSession(walkId);
     }
 
     public void onProviderDisabled(String p) {
@@ -173,6 +233,7 @@ public class WalkService extends Service implements LocationListener {
         ui.removeCallbacksAndMessages(null);
         manager.removeUpdates(this);
         store.close();
+        zones.close();
         running = false;
         super.onDestroy();
     }

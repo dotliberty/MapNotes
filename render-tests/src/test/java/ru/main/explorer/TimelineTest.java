@@ -64,7 +64,7 @@ public class TimelineTest {
             d.setVersion(2);
         }
         try (Store s = new Store(app)) {
-            assertEquals(4, s.getReadableDatabase().getVersion());
+            assertEquals(6, s.getReadableDatabase().getVersion());
             assertEquals(1, s.points().size());
             assertEquals("Старая заметка", s.photo(7).note);
             assertEquals("private/original.jpg", s.photo(7).path);

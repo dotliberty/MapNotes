@@ -52,7 +52,9 @@ public class Design12Test {
             assertTrue("Useful map width", map.getWidth() >= 180);
             a.menu();
             AlertDialog menu = ShadowAlertDialog.getLatestAlertDialog();
-            assertEquals(11, menu.getListView().getAdapter().getCount());
+            assertEquals(12, menu.getListView().getAdapter().getCount());
+            assertEquals(
+                    a.getString(R.string.zones_title), menu.getListView().getAdapter().getItem(11));
             assertEquals(
                     a.getString(R.string.motion_title),
                     menu.getListView().getAdapter().getItem(10));

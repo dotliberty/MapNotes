@@ -123,6 +123,56 @@ public class MapView extends View {
     }
 
     private PhotoTapListener photoTap;
+
+    public interface ZoneLongPressListener {
+        void open(double latitude, double longitude);
+    }
+
+    public interface ZoneTapListener {
+        void open(List<SpawnZone> zones);
+    }
+
+    private ZoneLongPressListener zoneLongPress;
+    private ZoneTapListener zoneTap;
+    private List<SpawnZone> spawnZones = Collections.emptyList();
+    private final SpawnZoneOverlay zoneOverlay = new SpawnZoneOverlay();
+    private ZoneShapeEditor zoneEditor;
+
+    public void setZoneEditor(ZoneShapeEditor editor) {
+        if (zoneEditor != null) zoneEditor.cancelGesture();
+        zoneEditor = editor;
+        invalidate();
+    }
+
+    public void setZoneLongPressListener(ZoneLongPressListener listener) {
+        zoneLongPress = listener;
+    }
+
+    public void setZoneTapListener(ZoneTapListener listener) {
+        zoneTap = listener;
+    }
+
+    public void setSpawnZones(List<SpawnZone> value) {
+        if (closed) return;
+        spawnZones = Collections.unmodifiableList(new ArrayList<>(value));
+        zoneOverlay.setZones(spawnZones);
+        invalidate();
+    }
+
+    public List<SpawnZone> getSpawnZones() {
+        return spawnZones;
+    }
+
+    public double[] zoneCoordinate(float px, float py) {
+        double factor = (1 << zoom) * (double) viewportFraction;
+        double worldX = cx + (px - getWidth() / 2.0) / factor;
+        double worldY = Math.max(0, Math.min(256, cy + (py - getHeight() / 2.0) / factor));
+        return new double[] {
+            Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1 - worldY / 128)))),
+            SpawnZone.normalizeLongitude(worldX / 256 * 360 - 180)
+        };
+    }
+
     private final ExecutorService photoPool = Executors.newSingleThreadExecutor();
     private ArrayList<PhotoGroups.Group> groupedPhotos;
     private double photoCx, photoCy;
@@ -674,7 +724,26 @@ public class MapView extends View {
                             }
 
                             public boolean onSingleTapConfirmed(MotionEvent e) {
-                                return tapPhotos(e.getX(), e.getY());
+                                if (tapPhotos(e.getX(), e.getY())) return true;
+                                if (zoneTap == null) return false;
+                                List<SpawnZone> matches =
+                                        zoneOverlay.hit(MapView.this, e.getX(), e.getY());
+                                if (matches.isEmpty()) return false;
+                                zoneTap.open(matches);
+                                return true;
+                            }
+
+                            public void onLongPress(MotionEvent e) {
+                                if (closed
+                                        || zoneLongPress == null
+                                        || scale.isInProgress()
+                                        || e.getX() < 0
+                                        || e.getX() > getWidth()
+                                        || e.getY() < 0
+                                        || e.getY() >= getHeight() - dp(38)) return;
+                                follow = false;
+                                double[] coordinate = zoneCoordinate(e.getX(), e.getY());
+                                zoneLongPress.open(coordinate[0], coordinate[1]);
                             }
 
                             public boolean onDoubleTap(MotionEvent e) {
@@ -941,6 +1010,11 @@ public class MapView extends View {
         if (closed) return;
         stopViewport();
         closed = true;
+        setZoneEditor(null);
+        zoneLongPress = null;
+        zoneTap = null;
+        spawnZones = Collections.emptyList();
+        zoneOverlay.setZones(spawnZones);
         MapNetwork.cancel(liveConnections);
         WorldMap oldWorld = world;
         world = null;
@@ -960,6 +1034,12 @@ public class MapView extends View {
 
     protected void onDetachedFromWindow() {
         stopViewport();
+        if (zoneEditor != null) zoneEditor.cancelGesture();
+        long now = android.os.SystemClock.uptimeMillis();
+        MotionEvent cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0, 0, 0);
+        gestures.onTouchEvent(cancel);
+        scale.onTouchEvent(cancel);
+        cancel.recycle();
         cards.clear();
         groupedPhotos = null;
         AtlasMotion.cancel(this);
@@ -971,6 +1051,11 @@ public class MapView extends View {
             stopViewport();
             AtlasMotion.cancel(this);
         }
+        if (zoneEditor != null && zoneEditor.onTouch(e)) return true;
+        return handleMapTouch(e);
+    }
+
+    boolean handleMapTouch(MotionEvent e) {
         scale.onTouchEvent(e);
         gestures.onTouchEvent(e);
         return true;
@@ -998,6 +1083,8 @@ public class MapView extends View {
         drawRoute(c);
         drawCurrentMarker(c);
         c.restoreToCount(viewportSave);
+        zoneOverlay.draw(c, this);
+        if (zoneEditor != null) zoneEditor.draw(c);
         drawPhotos(c);
         drawScale(c);
         if (illustrated) drawCompass(c);

@@ -104,7 +104,7 @@ public class MovementIntegrationTest {
         }
         try (Store store = new Store(app);
                 MovementStore data = new MovementStore(app)) {
-            assertEquals(4, store.getReadableDatabase().getVersion());
+            assertEquals(6, store.getReadableDatabase().getVersion());
             assertEquals(walk, store.openWalk().id);
             assertEquals("retained note", store.photo(photo).note);
             assertEquals("private/test.jpg", store.photo(photo).path);
@@ -279,7 +279,7 @@ public class MovementIntegrationTest {
     public void tripGpsRejectsBadAccuracyStaleAndBackwardTime() {
         TripGpsFilter filter = new TripGpsFilter();
         Location first = fix(55, 1, 2);
-        first.setAccuracy(100);
+        first.setAccuracy(101);
         assertEquals("poor_gps_accuracy", filter.accept(first, first.getElapsedRealtimeNanos()));
         first.setAccuracy(5);
         assertEquals(

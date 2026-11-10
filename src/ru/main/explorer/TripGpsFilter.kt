@@ -18,11 +18,12 @@ class TripGpsFilter {
                 kotlin.math.abs(location.longitude) > 180
         )
             return "invalid_coordinates"
+        // Journey recording tolerates degraded reception; exploration keeps its own 30 m limit.
         if (
             !location.hasAccuracy() ||
                 !location.accuracy.isFinite() ||
                 location.accuracy <= 0 ||
-                location.accuracy > 30
+                location.accuracy > 100
         )
             return "poor_gps_accuracy"
         val time = location.elapsedRealtimeNanos
@@ -50,17 +51,8 @@ class TripGpsFilter {
                     )
                 val uncertainty = previous.accuracy + location.accuracy
                 if (distance > 120 * seconds + uncertainty) return "too_fast_gps_jump"
-                if (
-                    previous.hasSpeed() &&
-                        location.hasSpeed() &&
-                        previous.hasSpeedAccuracy() &&
-                        location.hasSpeedAccuracy() &&
-                        previous.speedAccuracyMetersPerSecond <= 2 &&
-                        location.speedAccuracyMetersPerSecond <= 2
-                ) {
-                    val plausible = maxOf(previous.speed, location.speed).toDouble() + 15.0
-                    if (distance > plausible * seconds + uncertainty) return "too_fast_gps_jump"
-                }
+                // Reported speed can lag position after a tunnel or a stop. It is not
+                // an independent reason to discard an otherwise plausible transport fix.
             }
         }
         anchor = Location(location)

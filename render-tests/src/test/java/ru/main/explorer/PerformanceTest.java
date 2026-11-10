@@ -350,6 +350,7 @@ public class PerformanceTest {
             l.setLatitude(55.748);
             l.setLongitude(37.612);
             long start = store.latestPointId();
+            l.setAccuracy(5);
             for (int i = 0; i < 7; i++) {
                 l.setTime(i);
                 store.add(l, 1);
