@@ -42,10 +42,16 @@ def build():
         default=os.environ.get("GRADLE") or shutil.which("gradle"),
         help="Gradle 8.9 executable (or set GRADLE)",
     )
-    parser.add_argument(
+    variants = parser.add_mutually_exclusive_group()
+    variants.add_argument(
         "--debug",
         action="store_true",
         help="Separate .debug application using existing ~/.android/debug.keystore; never creates keys or reads release credentials",
+    )
+    variants.add_argument(
+        "--non-debug-test",
+        action="store_true",
+        help="Non-debuggable benchmark build of the same .debug app, using its existing local identity",
     )
     parser.add_argument(
         "--keystore",
@@ -58,10 +64,11 @@ def build():
         help="Require the same public signing certificate as this APK",
     )
     args = parser.parse_args()
-    if args.debug and (args.keystore or args.previous_apk):
-        parser.error("--debug cannot use release signing arguments")
+    isolated = args.debug or args.non_debug_test
+    if isolated and (args.keystore or args.previous_apk):
+        parser.error("Isolated test builds cannot use release signing arguments")
     debug_key = None
-    if args.debug:
+    if isolated:
         try:
             debug_key = debug_keystore()
         except ValueError as error:
@@ -113,7 +120,9 @@ def build():
     gradle = args.gradle
     if not gradle:
         parser.error("Install Gradle 8.9 and put it on PATH, or set GRADLE")
-    variant = "debug" if args.debug else "release"
+    variant = (
+        "benchmark" if args.non_debug_test else "debug" if args.debug else "release"
+    )
     run(
         [
             gradle,
@@ -135,9 +144,10 @@ def build():
     run([bt / ("zipalign" + exe), "-f", "4", unsigned, aligned])
     signer = [java / ("java" + exe), "-jar", bt / "lib/apksigner.jar"]
     result_apk = aligned
-    if args.debug:
+    if isolated:
         # Standard public Android debug credentials, not publisher signing material.
-        result_apk = output / ("MapNotes-" + version + "-debug.apk")
+        suffix = "-nondebug-test.apk" if args.non_debug_test else "-debug.apk"
+        result_apk = output / ("MapNotes-" + version + suffix)
         run(
             [
                 *signer,
@@ -207,8 +217,8 @@ def build():
     digest = hashlib.sha256(result_apk.read_bytes()).hexdigest()
     print(digest + "  " + result_apk.name)
     print(
-        "Debug APK verified: separate .debug app, persistent local debug certificate; not an official release update."
-        if args.debug
+        "Isolated test APK verified: .debug app, persistent local certificate; not an official release update."
+        if isolated
         else (
             "Unsigned APKs cannot be installed. Use an independently owned signing key for local builds."
             if not args.keystore

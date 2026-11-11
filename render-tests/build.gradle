@@ -19,6 +19,11 @@ debugManifest.parentFile.mkdirs()
 debugManifest.text = '<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">' +
     '<application android:label="MapNotes beta DEBUG" tools:replace="android:label" />' +
     '</manifest>'
+def benchmarkManifest = layout.buildDirectory.file('generated/mapnotes/benchmark/AndroidManifest.xml').get().asFile
+benchmarkManifest.parentFile.mkdirs()
+benchmarkManifest.text = '<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">' +
+    '<application android:label="MapNotes beta TEST" tools:replace="android:label" />' +
+    '</manifest>'
 
 android {
     namespace 'ru.main.explorer'
@@ -41,6 +46,14 @@ android {
             signingConfig null
             minifyEnabled false
         }
+        benchmark {
+            initWith release
+            applicationIdSuffix '.debug'
+            debuggable false
+            signingConfig null
+            minifyEnabled false
+            matchingFallbacks = ['release']
+        }
     }
 
     kotlinOptions {
@@ -50,6 +63,9 @@ android {
     sourceSets {
         debug {
             manifest.srcFile debugManifest
+        }
+        benchmark {
+            manifest.srcFile benchmarkManifest
         }
         main {
             manifest.srcFile generatedManifest

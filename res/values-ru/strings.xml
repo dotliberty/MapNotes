@@ -52,296 +52,296 @@
     <string name="crash_report">Отчёт о сбое</string>
     <string name="map_sources">Карты мира: где скачать</string>
     <string name="disconnect_map">Отключить подключённую карту</string>
-    <string name="network_paused" formatted="false">"Сеть на паузе"</string>
-    <string name="too_many_buildings" formatted="false">"Слишком много зданий"</string>
-    <string name="incomplete_building_data" formatted="false">"Неполные данные зданий"</string>
-    <string name="could_not_save_buildings" formatted="false">"Не удалось сохранить здания"</string>
-    <string name="light_on" formatted="false">"Свет: вкл"</string>
-    <string name="light_off" formatted="false">"Свет: выкл"</string>
-    <string name="photo_size" formatted="false">"Размер фото"</string>
-    <string name="mp" formatted="false">"%.1f Мп"</string>
-    <string name="map_location_gps" formatted="false">"Точка на карте · GPS ±"</string>
-    <string name="m" formatted="false">" м"</string>
-    <string name="waiting_for_gps_a_fresh_location_is_needed_for_a_photo" formatted="false">"Ждём GPS · для снимка нужна свежая точка на карте"</string>
-    <string name="could_not_turn_on_light" formatted="false">"Не удалось включить свет: "</string>
-    <string name="map" formatted="false">"‹ Карта"</string>
-    <string name="preparing_camera_and_location" formatted="false">"Готовим камеру и местоположение…"</string>
-    <string name="take_a_photo_with_a_map_location" formatted="false">"Сделать фотографию с точкой на карте"</string>
-    <string name="mp_2" formatted="false">"%d × %d · %.1f Мп"</string>
-    <string name="photo_dimensions" formatted="false">"Размер фотографии"</string>
-    <string name="allow_location_access_to_place_photos_on_the_map" formatted="false">"Разреши местоположение, чтобы привязать фото к карте"</string>
-    <string name="no_camera_on_this_device" formatted="false">"На устройстве нет камеры"</string>
-    <string name="camera_did_not_report_supported_formats" formatted="false">"Камера не сообщила форматы"</string>
-    <string name="could_not_save_photo" formatted="false">"Не удалось сохранить фото: "</string>
-    <string name="could_not_receive_photo" formatted="false">"Не удалось получить фото: "</string>
-    <string name="camera_disconnected_return_to_the_map_and_open_it_again" formatted="false">"Камера отключена. Вернись на карту и открой снова."</string>
-    <string name="camera_error" formatted="false">"Ошибка камеры "</string>
-    <string name="return_to_the_map_and_open_the_camera_again" formatted="false">". Вернись на карту и открой камеру снова."</string>
-    <string name="could_not_open_camera" formatted="false">"Не удалось открыть камеру: "</string>
-    <string name="no_preview_available" formatted="false">"Нет предпросмотра"</string>
-    <string name="jpeg_format_unavailable" formatted="false">"Нет формата JPEG"</string>
-    <string name="camera_ready_the_original_will_be_saved_in_mapnotes" formatted="false">"Камера готова · оригинал сохранится в MapNotes"</string>
-    <string name="preview_error" formatted="false">"Ошибка предпросмотра: "</string>
-    <string name="camera_does_not_support_the_selected_mode" formatted="false">"Камера не поддержала выбранный режим"</string>
-    <string name="camera_is_not_ready_yet" formatted="false">"Камера ещё не готова"</string>
-    <string name="waiting_for_a_fresh_location_to_place_the_photo_on_the_map" formatted="false">"Ждём свежее местоположение для отметки фото на карте"</string>
-    <string name="saving_photo" formatted="false">"Сохраняем фото…"</string>
-    <string name="photo_capture_failed_try_again" formatted="false">"Снимок не получился. Попробуй ещё раз"</string>
-    <string name="could_not_take_photo" formatted="false">"Не удалось снять: "</string>
-    <string name="camera_permission_is_required_to_take_photos" formatted="false">"Без разрешения камеры сделать фото нельзя"</string>
-    <string name="wait_for_the_photo_to_finish_saving" formatted="false">"Дождись сохранения фотографии"</string>
-    <string name="last_exit" formatted="false">"Последнее завершение: "</string>
-    <string name="nandroid_reason" formatted="false">"\nПричина Android: "</string>
-    <string name="no_crash_report_has_been_recorded_yet" formatted="false">"Записанного отчёта о сбое пока нет."</string>
-    <string name="app_not_responding_anr" formatted="false">"интерфейс не отвечает (ANR)"</string>
-    <string name="out_of_memory" formatted="false">"нехватка памяти"</string>
-    <string name="java_crash" formatted="false">"ошибка Java"</string>
-    <string name="native_code_crash" formatted="false">"ошибка нативного кода"</string>
-    <string name="stopped_during_app_update" formatted="false">"остановлено при обновлении приложения"</string>
-    <string name="stopped_by_user_or_update" formatted="false">"остановлено пользователем или обновлением"</string>
-    <string name="code" formatted="false">"код "</string>
-    <string name="copy" formatted="false">"Копировать"</string>
-    <string name="close" formatted="false">"Закрыть"</string>
-    <string name="could_not_check_gallery_publication" formatted="false">"Не удалось проверить публикацию в галерее"</string>
-    <string name="permission_to_save_to_gallery_is_missing" formatted="false">"Нет разрешения на сохранение в галерею"</string>
-    <string name="original_photo_unavailable" formatted="false">"Оригинал фотографии недоступен"</string>
-    <string name="could_not_save_export_state" formatted="false">"Не удалось сохранить состояние экспорта"</string>
-    <string name="could_not_prepare_to_save_again" formatted="false">"Не удалось подготовить повторное сохранение"</string>
-    <string name="gallery_unavailable" formatted="false">"Галерея недоступна"</string>
-    <string name="could_not_create_pictures_mapnotes" formatted="false">"Не удалось создать Pictures/MapNotes"</string>
-    <string name="gallery_did_not_create_an_entry" formatted="false">"Галерея не создала запись"</string>
-    <string name="could_not_prepare_export" formatted="false">"Не удалось подготовить экспорт"</string>
-    <string name="gallery_did_not_open_the_file" formatted="false">"Галерея не открыла файл"</string>
-    <string name="gallery_copy_size_does_not_match_the_original" formatted="false">"Размер копии в галерее не совпал с оригиналом"</string>
-    <string name="gallery_did_not_publish_the_photo" formatted="false">"Галерея не опубликовала фото"</string>
-    <string name="could_not_save_export_state_try_saving_again" formatted="false">"Не удалось сохранить состояние экспорта; повтори сохранение"</string>
-    <string name="mock_gps_location" formatted="false">"Подмена GPS"</string>
-    <string name="invalid_coordinates" formatted="false">"Некорректные координаты"</string>
-    <string name="poor_gps_accuracy" formatted="false">"Низкая точность GPS"</string>
-    <string name="stale_location" formatted="false">"Устаревшая точка"</string>
-    <string name="invalid_gps_time" formatted="false">"Неверное время GPS"</string>
-    <string name="gps_gap_waiting_for_the_next_location" formatted="false">"Пауза GPS: нужна следующая точка"</string>
-    <string name="too_fast_gps_jump" formatted="false">"Слишком быстро / скачок GPS"</string>
-    <string name="waiting_for_current_location" formatted="false">"Ожидаем текущее местоположение…"</string>
-    <string name="unfinished_walk" formatted="false">"Незавершённая прогулка"</string>
-    <string name="recording_was_interrupted_total_time_includes_the_break_the_route" formatted="false">"Запись прервана. Полное время включает перерыв; маршрут через него не соединяется."</string>
-    <string name="resume" formatted="false">"Продолжить"</string>
-    <string name="finish_now" formatted="false">"Завершить сейчас"</string>
-    <string name="the_world_awaits_your_footsteps" formatted="false">"Мир ждёт твоих шагов"</string>
-    <string name="got_it" formatted="false">"Понятно"</string>
-    <string name="no_walks_yet_earlier_locations_and_photos_are_kept_separately_wit" formatted="false">"Пока нет прогулок. Старые точки и фото сохранены отдельно, без выдуманных прогулок."</string>
-    <string name="unfinished" formatted="false">" · не завершена"</string>
-    <string name="km_total_time_h_min_s_nincludes_breaks_and_waiting_for_gps_photos" formatted="false">"%.2f км · полное время %d ч %02d мин %02d с\nВключает перерывы и ожидание GPS. Фото за весь период: %d"</string>
-    <string name="show_walk_location_on_map" formatted="false">"К месту прогулки на карте"</string>
-    <string name="photo" formatted="false">"Фото №"</string>
-    <string name="back_to_map" formatted="false">"К карте"</string>
-    <string name="could_not_start_gps" formatted="false">"Не удалось запустить GPS: "</string>
-    <string name="camera_and_location_access_are_required_for_geotagged_photos" formatted="false">"Для фото с меткой нужны камера и местоположение"</string>
-    <string name="allow_precise_location_in_app_settings" formatted="false">"Разреши точное местоположение в настройках приложения"</string>
-    <string name="precise_location_is_needed_to_reveal_small_areas_enable_it_in_app" formatted="false">"Для раскрытия небольших участков нужно точное местоположение. Включи его в разрешениях приложения."</string>
-    <string name="open_settings" formatted="false">"Открыть настройки"</string>
-    <string name="later" formatted="false">"Позже"</string>
-    <string name="download_paused" formatted="false">"Загрузка приостановлена"</string>
-    <string name="saved_offline_areas" formatted="false">"Сохранено офлайн-областей: "</string>
-    <string name="km_walked_route_points" formatted="false">"%.2f км пройдено · отметок пути: %d"</string>
-    <string name="finding_current_gps_location" formatted="false">"Ищем текущее положение GPS…"</string>
-    <string name="enable_gps_in_device_settings" formatted="false">"Включи GPS в настройках телефона"</string>
-    <string name="could_not_get_gps_location" formatted="false">"Не удалось получить GPS: "</string>
-    <string name="approximate_location" formatted="false">"Примерное положение ±"</string>
-    <string name="m_waiting_for_precise_gps_to_reveal_the_map" formatted="false">" м · ждём точный GPS для окраски"</string>
-    <string name="you_are_here_gps" formatted="false">"Ты здесь · GPS ±"</string>
-    <string name="m_reveal_up_to_100_m" formatted="false">" м · окраска 100 м"</string>
-    <string name="could_not_save_location" formatted="false">"Не удалось сохранить точку"</string>
-    <string name="download_map_to_phone" formatted="false">"Скачать карту на телефон"</string>
-    <string name="paste_a_direct_https_link_to_mbtiles_for_a_large_planet_file_use_" formatted="false">"Вставь прямую HTTPS-ссылку на MBTiles. Для большого файла планеты используй браузер с докачкой, затем «Подключить карту с устройства». Копирование по ссылке требует дополнительного места."</string>
-    <string name="download" formatted="false">"Скачать"</string>
-    <string name="an_https_link_is_required" formatted="false">"Нужна HTTPS-ссылка"</string>
-    <string name="http_error" formatted="false">"HTTP-ошибка"</string>
-    <string name="connected" formatted="false">"Подключено: "</string>
-    <string name="no_photos_yet_tap_photo_on_the_map" formatted="false">"Пока нет фото. Нажми «＋ Фото» на карте"</string>
-    <string name="photos" formatted="false">"Фотографии · "</string>
-    <string name="return_to_map" formatted="false">"Вернуться к карте"</string>
-    <string name="map_download_in_progress" formatted="false">"Карта скачивается"</string>
-    <string name="continue_download" formatted="false">"Продолжить загрузку"</string>
-    <string name="pause" formatted="false">"Пауза"</string>
-    <string name="unfinished_download_saved" formatted="false">"Сохранена незавершённая загрузка"</string>
-    <string name="completed_sections_are_already_on_your_phone_resume_where_you_lef" formatted="false">"Готовые участки уже на телефоне. Можно продолжить с того же места, даже если ты переместился."</string>
-    <string name="another_area" formatted="false">"Другая область"</string>
-    <string name="what_would_you_like_to_save_offline" formatted="false">"Что сохранить офлайн?"</string>
-    <string name="atlas_streets_and_buildings_faster" formatted="false">"Атлас: улицы и здания (быстрее)"</string>
-    <string name="atlas_and_satellite_imagery" formatted="false">"Атлас и спутниковые снимки"</string>
-    <string name="wait_for_a_gps_location_or_zoom_in_on_the_area_you_want" formatted="false">"Дождись своего положения GPS или приблизь нужный район карты"</string>
-    <string name="text_1_1_km" formatted="false">"1 × 1 км"</string>
-    <string name="text_4_4_km" formatted="false">"4 × 4 км"</string>
-    <string name="text_20_20_km" formatted="false">"20 × 20 км"</string>
-    <string name="text_50_50_km" formatted="false">"50 × 50 км"</string>
-    <string name="text_100_100_km_for_long_walks" formatted="false">"100 × 100 км — для длинных прогулок"</string>
-    <string name="area_around_map_centre" formatted="false">"Область вокруг центра карты"</string>
-    <string name="save_atlas_and_satellite_imagery_estimated_total_about" formatted="false">"Сохраним атлас и спутник. Общий ориентир: около "</string>
-    <string name="mb" formatted="false">" МБ."</string>
-    <string name="save_streets_buildings_and_water_satellite_imagery_is_excluded_si" formatted="false">"Сохраним улицы, здания и воду. Спутник не скачивается; объём зависит от плотности карты."</string>
-    <string name="a_large_area_may_take_several_hours_try_1_4_km_first_downloads_ca" formatted="false">" Большая область может скачиваться несколько часов. Для первой проверки выбери 1–4 км. Доступны пауза и продолжение с готовых частей. Публичные серверы могут быть недоступны."</string>
-    <string name="start_download" formatted="false">"Начать загрузку"</string>
-    <string name="starting_download" formatted="false">"Начинаем загрузку…"</string>
-    <string name="offline_map_downloads" formatted="false">"Загрузка офлайн-карт"</string>
-    <string name="mapnotes_offline_map" formatted="false">"MapNotes · офлайн-карта"</string>
-    <string name="download_cancelled" formatted="false">"Загрузка отменена"</string>
-    <string name="network_paused_tap_network_on_the_map" formatted="false">"Сеть на паузе · нажми ▶ Сеть на карте"</string>
-    <string name="resuming_download_of_saved_area" formatted="false">"Продолжаем загрузку сохранённой области…"</string>
-    <string name="map_server_http" formatted="false">"Сервер карты: HTTP "</string>
-    <string name="server_interrupted_map_transfer" formatted="false">"Сервер оборвал передачу карты"</string>
-    <string name="server_returned_incomplete_map_data" formatted="false">"Сервер вернул неполную схему"</string>
-    <string name="could_not_save_map" formatted="false">"Не удалось сохранить карту"</string>
-    <string name="low_storage_free_some_space_and_resume_the_download" formatted="false">"Мало памяти телефона. Освободи место и продолжи загрузку"</string>
-    <string name="satellite_server_returned_an_invalid_image" formatted="false">"Спутник вернул неверное изображение"</string>
-    <string name="area" formatted="false">"Область "</string>
-    <string name="km_downloaded" formatted="false">" км скачана: "</string>
-    <string name="map_and_satellite_imagery_offline" formatted="false">"схема и спутник офлайн"</string>
-    <string name="atlas_offline_without_satellite_imagery" formatted="false">"атлас офлайн (без спутника)"</string>
-    <string name="download_paused_tap_resume" formatted="false">"Загрузка приостановлена. Нажми «Продолжить»"</string>
-    <string name="download_stopped" formatted="false">"Загрузка остановлена: "</string>
-    <string name="connecting_local_map" formatted="false">"Подключаем локальную карту…"</string>
-    <string name="vector" formatted="false">" · векторная"</string>
-    <string name="raster" formatted="false">" · растровая"</string>
-    <string name="zoom_levels" formatted="false">" · масштабы "</string>
-    <string name="unsupported_map" formatted="false">"Карта не поддерживается"</string>
-    <string name="could_not_connect_directly" formatted="false">"Не удалось подключить напрямую"</string>
-    <string name="n_nchoose_mbtiles_from_your_local_downloads_folder_if_the_file_pr" formatted="false">"\n\nВыбери MBTiles из локальной папки «Загрузки». Если файловый провайдер не поддерживает прямое чтение, можно скопировать карту в приложение — для этого понадобится дополнительное место размером с файл."</string>
-    <string name="copy_2" formatted="false">"Скопировать"</string>
-    <string name="copying_map" formatted="false">"Копирование карты"</string>
-    <string name="preparing" formatted="false">"Подготовка…"</string>
-    <string name="could_not_open_file" formatted="false">"Не удалось открыть файл"</string>
-    <string name="copy_cancelled" formatted="false">"Копирование отменено"</string>
-    <string name="not_enough_free_space_for_a_copy" formatted="false">"Недостаточно свободного места для копии"</string>
-    <string name="copied_gb" formatted="false">"Скопировано %.2f ГБ"</string>
-    <string name="map_not_connected" formatted="false">"Карта не подключена"</string>
-    <string name="detailed_world_map" formatted="false">"Подробная карта мира"</string>
-    <string name="vector_mbtiles_using_openmaptiles_or_protomaps_and_raster_mbtiles" formatted="false">"Поддерживаются векторные MBTiles со схемой OpenMapTiles или Protomaps и растровые MBTiles.\n\nДля всей планеты понадобится много места: текущая сборка Quarry около 85 ГБ. Скачай MBTiles браузером с докачкой, сохрани в локальную папку и выбери «Подключить карту с устройства». Файлы PMTiles, .map и исходные .osm.pbf пока не поддерживаются. Спутниковые снимки в векторный файл не входят."</string>
-    <string name="map_catalogue" formatted="false">"Каталог карт"</string>
-    <string name="connect_file" formatted="false">"Подключить файл"</string>
-    <string name="map_loading_paused" formatted="false">"Подгрузка карт на паузе"</string>
-    <string name="section_too_large" formatted="false">"Слишком большой участок"</string>
-    <string name="server_busy_waiting_30_seconds" formatted="false">"Сервер занят, подождём 30 секунд"</string>
-    <string name="map_section" formatted="false">"Схема: участок "</string>
-    <string name="saved" formatted="false">" · сохранено "</string>
-    <string name="satellite" formatted="false">"Спутник: "</string>
-    <string name="area_2" formatted="false">" · область "</string>
-    <string name="km" formatted="false">" км"</string>
-    <string name="waiting_for_connection_automatic_retry" formatted="false">"Ожидаем связь · автоповтор "</string>
-    <string name="network_error" formatted="false">"ошибка сети"</string>
-    <string name="map_too_dense_completed_sections_are_saved_try_again_later" formatted="false">"Слишком плотная схема. Готовые части сохранены; повтори позже"</string>
-    <string name="could_not_save" formatted="false">"Не удалось сохранить "</string>
-    <string name="atlas_online_loading_paused" formatted="false">"Атлас · онлайн-подгрузка на паузе"</string>
-    <string name="atlas_waiting_for_location" formatted="false">"Атлас · ждём местоположение"</string>
-    <string name="atlas_loading_streets_and_buildings" formatted="false">"Атлас · загружаем улицы и здания"</string>
-    <string name="atlas_map_ready_view_up_to_100_m" formatted="false">"Атлас · карта готова · обзор 100 м"</string>
-    <string name="atlas_no_detailed_map_download_this_area" formatted="false">"Атлас · нет подробной карты: скачай район"</string>
-    <string name="satellite_waiting_for_location" formatted="false">"Спутник: ждём местоположение"</string>
-    <string name="revealing_the_map_requires_precise_gps_within_30_m" formatted="false">"Окраска ждёт точный GPS (до ±30 м)"</string>
-    <string name="satellite_revealed_100_m" formatted="false">"Спутник открыт · 100 м · "</string>
-    <string name="loading_walls" formatted="false">"загружаем стены"</string>
-    <string name="no_wall_outlines_download_this_area" formatted="false">"нет контуров стен: скачай район"</string>
-    <string name="satellite_revealed_visibility_up_to_100_m" formatted="false">"Спутник открыт · видимость до 100 м"</string>
-    <string name="gps_inside_a_building_outside_visibility_unknown" formatted="false">"GPS внутри здания: внешняя видимость не определена"</string>
-    <string name="satellite_revealed_view_up_to_100_m_limited_by_walls" formatted="false">"Спутник открыт · видимость 100 м, стены ограничивают обзор"</string>
-    <string name="no_offline_imagery_download_this_area_while_online" formatted="false">"Нет снимка офлайн: скачай этот район с интернетом"</string>
-    <string name="image_not_loaded" formatted="false">"Снимок не загружен: "</string>
-    <string name="retry_in_10_s" formatted="false">" · повтор через 10 с"</string>
-    <string name="satellite_loading_image" formatted="false">"Спутник: загружаем снимок…"</string>
-    <string name="offline_z" formatted="false">" · офлайн · z"</string>
-    <string name="map_could_not_be_opened" formatted="false">"Карта не открыта: "</string>
-    <string name="you_are_here" formatted="false">"Ты здесь"</string>
-    <string name="streets_and_buildings_not_loaded_retry_in_15_s" formatted="false">"Улицы и здания не загружены · повтор через 15 с"</string>
-    <string name="photos_2" formatted="false">"Фото "</string>
-    <string name="zoom_in_or_open_the_gallery" formatted="false">" · приблизь карту или открой галерею"</string>
-    <string name="photo_2" formatted="false">"ФОТО"</string>
-    <string name="km_2" formatted="false">"%.0f км"</string>
-    <string name="m_2" formatted="false">"%.0f м"</string>
-    <string name="tile_too_large" formatted="false">"Слишком большой фрагмент"</string>
-    <string name="server_did_not_return_an_image" formatted="false">"Сервер вернул не изображение"</string>
-    <string name="could_not_save_image" formatted="false">"Не удалось сохранить снимок"</string>
-    <string name="no_saved_image" formatted="false">"нет сохранённого снимка"</string>
-    <string name="server_not_responding" formatted="false">"нет ответа сервера"</string>
-    <string name="cannot_connect_to_server" formatted="false">"нет связи с сервером"</string>
-    <string name="truncated_vector_tile" formatted="false">"Обрезанный векторный тайл"</string>
-    <string name="mvt_number_too_long" formatted="false">"Слишком длинное число MVT"</string>
-    <string name="invalid_mvt" formatted="false">"Повреждённый MVT"</string>
-    <string name="invalid_mvt_length" formatted="false">"Неверная длина MVT"</string>
-    <string name="label_too_long" formatted="false">"Слишком длинная подпись"</string>
-    <string name="unknown_mvt_field" formatted="false">"Неизвестное поле MVT"</string>
-    <string name="invalid_tile_size" formatted="false">"Некорректный размер тайла"</string>
-    <string name="vector_tile_too_large" formatted="false">"Слишком большой векторный тайл"</string>
-    <string name="too_many_layers" formatted="false">"Слишком много слоёв"</string>
-    <string name="mbtiles_with_mvt_pbf_is_required_rather_than_raw_osm_pbf" formatted="false">"Нужен MBTiles с MVT/PBF, а не исходный OSM PBF"</string>
-    <string name="too_many_features" formatted="false">"Слишком много объектов"</string>
-    <string name="unsupported_mvt_version" formatted="false">"Неподдерживаемая версия MVT"</string>
-    <string name="too_many_attributes" formatted="false">"Слишком много атрибутов"</string>
-    <string name="invalid_attributes" formatted="false">"Повреждённые атрибуты"</string>
-    <string name="invalid_dictionary" formatted="false">"Повреждённый словарь"</string>
-    <string name="invalid_geometry_commands" formatted="false">"Повреждённые команды геометрии"</string>
-    <string name="invalid_polygon_closure" formatted="false">"Неверное замыкание полигона"</string>
-    <string name="unknown_geometry" formatted="false">"Неизвестная геометрия"</string>
-    <string name="geometry_too_complex" formatted="false">"Слишком сложная геометрия"</string>
-    <string name="missing_line_start" formatted="false">"Нет начала линии"</string>
-    <string name="all_map_servers_are_unavailable" formatted="false">"Все серверы схемы недоступны: "</string>
-    <string name="photo_3" formatted="false">"← Фото · "</string>
-    <string name="photo_file_unavailable" formatted="false">"Файл фотографии недоступен"</string>
-    <string name="gps_m" formatted="false">"%.6f; %.6f · GPS ±%.0f м"</string>
-    <string name="show_photo_location_on_map" formatted="false">"Место снимка на карте"</string>
-    <string name="photo_note" formatted="false">"Заметка к фотографии"</string>
-    <string name="save_note" formatted="false">"Сохранить заметку"</string>
-    <string name="note_saved" formatted="false">"Заметка сохранена"</string>
-    <string name="save_to_gallery" formatted="false">"Сохранить в галерею"</string>
-    <string name="original_stays_in_mapnotes_a_copy_appears_in_the_gallery" formatted="false">"Оригинал останется в MapNotes · копия появится в галерее"</string>
-    <string name="not_saved_storage_permission_denied_original_stays_in_mapnotes" formatted="false">"Не сохранено: доступ к хранилищу не разрешён. Оригинал остался в MapNotes."</string>
-    <string name="saving_to_gallery" formatted="false">"Сохраняем в галерею…"</string>
-    <string name="already_saved_to_pictures_mapnotes_no_new_copy_created" formatted="false">"Уже сохранено в Pictures/MapNotes — новая копия не создана"</string>
-    <string name="saved_to_gallery_pictures_mapnotes" formatted="false">"Сохранено в галерею: Pictures/MapNotes"</string>
-    <string name="not_saved" formatted="false">"Не сохранено: "</string>
-    <string name="gallery_error" formatted="false">"ошибка галереи"</string>
-    <string name="original_stays_in_mapnotes" formatted="false">". Оригинал остался в MapNotes."</string>
-    <string name="camera_returned_an_invalid_image" formatted="false">"Камера вернула повреждённый снимок"</string>
-    <string name="could_not_create_photo_folder" formatted="false">"Не удалось создать папку фотографий"</string>
-    <string name="area_must_be_within_100_100_km_centred_between_84_s_and_84_n" formatted="false">"Размер области — до 100×100 км, центр между 84° ю.ш. и 84° с.ш."</string>
-    <string name="move_the_centre_area_crosses_the_map_boundary" formatted="false">"Сдвинь центр: область пересекает край карты"</string>
-    <string name="too_many_tiles_move_the_centre_to_a_lower_latitude" formatted="false">"Слишком много фрагментов: сдвинь центр к меньшей широте"</string>
-    <string name="walk_recording" formatted="false">"Запись прогулки"</string>
-    <string name="mapnotes_walk_in_progress" formatted="false">"MapNotes · прогулка идёт"</string>
-    <string name="gps_reveals_the_map_tap_stop_to_finish" formatted="false">"Идёт запись путешествия. Нажми «Стоп», чтобы завершить."</string>
-    <string name="stop" formatted="false">"Стоп"</string>
-    <string name="finding_precise_gps" formatted="false">"Ищем точный GPS…"</string>
-    <string name="gps_unavailable_enable_location" formatted="false">"GPS недоступен: включи геолокацию"</string>
-    <string name="gps_accuracy_unavailable" formatted="false">"Нет точности GPS"</string>
-    <string name="speed_too_high_for_a_walk" formatted="false">"Слишком высокая скорость для прогулки"</string>
-    <string name="place_revealed_accuracy" formatted="false">"Место открыто · точность ±"</string>
-    <string name="file_unavailable" formatted="false">"Файл недоступен"</string>
-    <string name="a_local_file_is_required_save_mbtiles_to_your_phone_s_downloads_f" formatted="false">"Нужен локальный файл: сохрани MBTiles в «Загрузки» телефона"</string>
-    <string name="a_ready_mbtiles_file_is_required_zip_pmtiles_and_raw_osm_pbf_are_" formatted="false">"Нужен готовый файл .mbtiles, не ZIP, PMTiles или исходный OSM PBF"</string>
-    <string name="map_file_truncated" formatted="false">"Файл карты обрезан"</string>
-    <string name="local_world_map" formatted="false">"Локальная карта мира"</string>
-    <string name="file_contains_no_tiles" formatted="false">"В файле нет тайлов"</string>
-    <string name="mbtiles_has_no_tile_index_this_file_would_be_too_slow_on_a_phone" formatted="false">"В MBTiles нет индекса тайлов: такой файл будет слишком медленным для телефона"</string>
-    <string name="invalid_map_zoom_levels" formatted="false">"Некорректные масштабы карты"</string>
-    <string name="empty_map" formatted="false">"Пустая карта"</string>
-    <string name="tile_missing" formatted="false">"Тайл отсутствует"</string>
-    <string name="tile_truncated" formatted="false">"Тайл обрезан"</string>
-    <string name="could_not_read_local_map" formatted="false">"Не удалось прочитать локальную карту"</string>
-    <string name="raster_image_too_large" formatted="false">"Слишком большое растровое изображение"</string>
-    <string name="invalid_raster_tile" formatted="false">"Повреждённый растровый тайл"</string>
-    <string name="start_a_walk_and_allow_precise_location_the_map_is_revealed_in_a_" formatted="false">"Начни прогулку и разреши точное местоположение. Карта раскрывается непрерывной полосой вдоль пути, до 100 м с учётом стен. Погрешность самого GPS показана отдельным кругом.\n\nЗапись продолжится с выключенным экраном, пока ты не нажмёшь «Стоп». Прогресс хранится только на телефоне.\n\nВесь мир доступен офлайн в общих очертаниях. Улицы и спутник можно сохранить кнопкой «Скачать район офлайн». Пока карта открыта, положение и цвет обновляются автоматически. Кнопка прогулки включает запись с выключенным экраном."</string>
-    <string name="gps_accuracy_within_30_m_speed_up_to_4_5_m_s_with_additional_accu" formatted="false">"GPS: точность до 30 м; скорость до 4,5 м/с с дополнительной проверкой погрешности. Скачки и подмена GPS не раскрывают карту.\n\nОфлайн: подключение векторных MBTiles (OpenMapTiles/Protomaps MVT/PBF) и растровых MBTiles. Подробная карта работает в стиле атласа. Файл планеты хранится на телефоне, читаются только нужные участки. Исходные OSM PBF и PMTiles не поддерживаются.\n\nУлицы: © OpenStreetMap contributors, openstreetmap.org/copyright. Загружаются только видимые фрагменты. Кнопка «Скачать район офлайн» сохраняет улицы и здания через Overpass, а также спутник EOX.\n\nЛокальные MBTiles показываются в атласе: векторные улицы, здания, вода и названия. Спутник выбирается отдельным режимом и не входит в векторный файл. Снимки обзорные (около 10 м/пиксель), 2016 года. EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016), CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ . Лицензия OSM: https://www.openstreetmap.org/copyright . При загрузке источники получают границы выбранного района. Координаты прогулок хранятся локально."</string>
-    <string name="map_section_progress">"Схема: участок %1$d / %2$d · сохранено %3$d"</string>
-    <string name="satellite_progress">"Спутник: %1$d / %2$d · область %3$d×%3$d км"</string>
-    <string name="retry_progress">"Ожидаем связь · автоповтор %1$d · %2$s"</string>
-    <string name="download_complete">"Область %1$d×%1$d км скачана: %2$s"</string>
-    <string name="walk_accuracy">"Запись · точность GPS ±%1$d м"</string>
-    <string name="zoom_in">"Приблизить"</string>
-    <string name="zoom_out">"Отдалить"</string>
-    <string name="my_location">"Моё местоположение"</string>
-    <string name="map_options">"Параметры карты"</string>
-    <string name="map_accessibility">"Карта. Перемещай одним пальцем, меняй масштаб двумя. Кнопка «Моё местоположение» включает слежение за GPS."</string>
-    <string name="photo_accessibility">"Фотография. Масштаб — двумя пальцами, сброс — двойным нажатием."</string>
-    <string name="back_to_photos">"Вернуться к карте"</string>
+    <string name="network_paused" formatted="false">&quot;Сеть на паузе&quot;</string>
+    <string name="too_many_buildings" formatted="false">&quot;Слишком много зданий&quot;</string>
+    <string name="incomplete_building_data" formatted="false">&quot;Неполные данные зданий&quot;</string>
+    <string name="could_not_save_buildings" formatted="false">&quot;Не удалось сохранить здания&quot;</string>
+    <string name="light_on" formatted="false">&quot;Свет: вкл&quot;</string>
+    <string name="light_off" formatted="false">&quot;Свет: выкл&quot;</string>
+    <string name="photo_size" formatted="false">&quot;Размер фото&quot;</string>
+    <string name="mp" formatted="false">&quot;%.1f Мп&quot;</string>
+    <string name="map_location_gps" formatted="false">&quot;Точка на карте · GPS ±&quot;</string>
+    <string name="m" formatted="false">&quot; м&quot;</string>
+    <string name="waiting_for_gps_a_fresh_location_is_needed_for_a_photo" formatted="false">&quot;Ждём GPS · для снимка нужна свежая точка на карте&quot;</string>
+    <string name="could_not_turn_on_light" formatted="false">&quot;Не удалось включить свет: &quot;</string>
+    <string name="map" formatted="false">&quot;‹ Карта&quot;</string>
+    <string name="preparing_camera_and_location" formatted="false">&quot;Готовим камеру и местоположение…&quot;</string>
+    <string name="take_a_photo_with_a_map_location" formatted="false">&quot;Сделать фотографию с точкой на карте&quot;</string>
+    <string name="mp_2" formatted="false">&quot;%d × %d · %.1f Мп&quot;</string>
+    <string name="photo_dimensions" formatted="false">&quot;Размер фотографии&quot;</string>
+    <string name="allow_location_access_to_place_photos_on_the_map" formatted="false">&quot;Разреши местоположение, чтобы привязать фото к карте&quot;</string>
+    <string name="no_camera_on_this_device" formatted="false">&quot;На устройстве нет камеры&quot;</string>
+    <string name="camera_did_not_report_supported_formats" formatted="false">&quot;Камера не сообщила форматы&quot;</string>
+    <string name="could_not_save_photo" formatted="false">&quot;Не удалось сохранить фото: &quot;</string>
+    <string name="could_not_receive_photo" formatted="false">&quot;Не удалось получить фото: &quot;</string>
+    <string name="camera_disconnected_return_to_the_map_and_open_it_again" formatted="false">&quot;Камера отключена. Вернись на карту и открой снова.&quot;</string>
+    <string name="camera_error" formatted="false">&quot;Ошибка камеры &quot;</string>
+    <string name="return_to_the_map_and_open_the_camera_again" formatted="false">&quot;. Вернись на карту и открой камеру снова.&quot;</string>
+    <string name="could_not_open_camera" formatted="false">&quot;Не удалось открыть камеру: &quot;</string>
+    <string name="no_preview_available" formatted="false">&quot;Нет предпросмотра&quot;</string>
+    <string name="jpeg_format_unavailable" formatted="false">&quot;Нет формата JPEG&quot;</string>
+    <string name="camera_ready_the_original_will_be_saved_in_mapnotes" formatted="false">&quot;Камера готова · оригинал сохранится в MapNotes&quot;</string>
+    <string name="preview_error" formatted="false">&quot;Ошибка предпросмотра: &quot;</string>
+    <string name="camera_does_not_support_the_selected_mode" formatted="false">&quot;Камера не поддержала выбранный режим&quot;</string>
+    <string name="camera_is_not_ready_yet" formatted="false">&quot;Камера ещё не готова&quot;</string>
+    <string name="waiting_for_a_fresh_location_to_place_the_photo_on_the_map" formatted="false">&quot;Ждём свежее местоположение для отметки фото на карте&quot;</string>
+    <string name="saving_photo" formatted="false">&quot;Сохраняем фото…&quot;</string>
+    <string name="photo_capture_failed_try_again" formatted="false">&quot;Снимок не получился. Попробуй ещё раз&quot;</string>
+    <string name="could_not_take_photo" formatted="false">&quot;Не удалось снять: &quot;</string>
+    <string name="camera_permission_is_required_to_take_photos" formatted="false">&quot;Без разрешения камеры сделать фото нельзя&quot;</string>
+    <string name="wait_for_the_photo_to_finish_saving" formatted="false">&quot;Дождись сохранения фотографии&quot;</string>
+    <string name="last_exit" formatted="false">&quot;Последнее завершение: &quot;</string>
+    <string name="nandroid_reason" formatted="false">&quot;\nПричина Android: &quot;</string>
+    <string name="no_crash_report_has_been_recorded_yet" formatted="false">&quot;Записанного отчёта о сбое пока нет.&quot;</string>
+    <string name="app_not_responding_anr" formatted="false">&quot;интерфейс не отвечает (ANR)&quot;</string>
+    <string name="out_of_memory" formatted="false">&quot;нехватка памяти&quot;</string>
+    <string name="java_crash" formatted="false">&quot;ошибка Java&quot;</string>
+    <string name="native_code_crash" formatted="false">&quot;ошибка нативного кода&quot;</string>
+    <string name="stopped_during_app_update" formatted="false">&quot;остановлено при обновлении приложения&quot;</string>
+    <string name="stopped_by_user_or_update" formatted="false">&quot;остановлено пользователем или обновлением&quot;</string>
+    <string name="code" formatted="false">&quot;код &quot;</string>
+    <string name="copy" formatted="false">&quot;Копировать&quot;</string>
+    <string name="close" formatted="false">&quot;Закрыть&quot;</string>
+    <string name="could_not_check_gallery_publication" formatted="false">&quot;Не удалось проверить публикацию в галерее&quot;</string>
+    <string name="permission_to_save_to_gallery_is_missing" formatted="false">&quot;Нет разрешения на сохранение в галерею&quot;</string>
+    <string name="original_photo_unavailable" formatted="false">&quot;Оригинал фотографии недоступен&quot;</string>
+    <string name="could_not_save_export_state" formatted="false">&quot;Не удалось сохранить состояние экспорта&quot;</string>
+    <string name="could_not_prepare_to_save_again" formatted="false">&quot;Не удалось подготовить повторное сохранение&quot;</string>
+    <string name="gallery_unavailable" formatted="false">&quot;Галерея недоступна&quot;</string>
+    <string name="could_not_create_pictures_mapnotes" formatted="false">&quot;Не удалось создать Pictures/MapNotes&quot;</string>
+    <string name="gallery_did_not_create_an_entry" formatted="false">&quot;Галерея не создала запись&quot;</string>
+    <string name="could_not_prepare_export" formatted="false">&quot;Не удалось подготовить экспорт&quot;</string>
+    <string name="gallery_did_not_open_the_file" formatted="false">&quot;Галерея не открыла файл&quot;</string>
+    <string name="gallery_copy_size_does_not_match_the_original" formatted="false">&quot;Размер копии в галерее не совпал с оригиналом&quot;</string>
+    <string name="gallery_did_not_publish_the_photo" formatted="false">&quot;Галерея не опубликовала фото&quot;</string>
+    <string name="could_not_save_export_state_try_saving_again" formatted="false">&quot;Не удалось сохранить состояние экспорта; повтори сохранение&quot;</string>
+    <string name="mock_gps_location" formatted="false">&quot;Подмена GPS&quot;</string>
+    <string name="invalid_coordinates" formatted="false">&quot;Некорректные координаты&quot;</string>
+    <string name="poor_gps_accuracy" formatted="false">&quot;Низкая точность GPS&quot;</string>
+    <string name="stale_location" formatted="false">&quot;Устаревшая точка&quot;</string>
+    <string name="invalid_gps_time" formatted="false">&quot;Неверное время GPS&quot;</string>
+    <string name="gps_gap_waiting_for_the_next_location" formatted="false">&quot;Пауза GPS: нужна следующая точка&quot;</string>
+    <string name="too_fast_gps_jump" formatted="false">&quot;Слишком быстро / скачок GPS&quot;</string>
+    <string name="waiting_for_current_location" formatted="false">&quot;Ожидаем текущее местоположение…&quot;</string>
+    <string name="unfinished_walk" formatted="false">&quot;Незавершённая прогулка&quot;</string>
+    <string name="recording_was_interrupted_total_time_includes_the_break_the_route" formatted="false">&quot;Запись прервана. Полное время включает перерыв; маршрут через него не соединяется.&quot;</string>
+    <string name="resume" formatted="false">&quot;Продолжить&quot;</string>
+    <string name="finish_now" formatted="false">&quot;Завершить сейчас&quot;</string>
+    <string name="the_world_awaits_your_footsteps" formatted="false">&quot;Мир ждёт твоих шагов&quot;</string>
+    <string name="got_it" formatted="false">&quot;Понятно&quot;</string>
+    <string name="no_walks_yet_earlier_locations_and_photos_are_kept_separately_wit" formatted="false">&quot;Пока нет прогулок. Старые точки и фото сохранены отдельно, без выдуманных прогулок.&quot;</string>
+    <string name="unfinished" formatted="false">&quot; · не завершена&quot;</string>
+    <string name="km_total_time_h_min_s_nincludes_breaks_and_waiting_for_gps_photos" formatted="false">&quot;%.2f км · полное время %d ч %02d мин %02d с\nВключает перерывы и ожидание GPS. Фото за весь период: %d&quot;</string>
+    <string name="show_walk_location_on_map" formatted="false">&quot;К месту прогулки на карте&quot;</string>
+    <string name="photo" formatted="false">&quot;Фото №&quot;</string>
+    <string name="back_to_map" formatted="false">&quot;К карте&quot;</string>
+    <string name="could_not_start_gps" formatted="false">&quot;Не удалось запустить GPS: &quot;</string>
+    <string name="camera_and_location_access_are_required_for_geotagged_photos" formatted="false">&quot;Для фото с меткой нужны камера и местоположение&quot;</string>
+    <string name="allow_precise_location_in_app_settings" formatted="false">&quot;Разреши точное местоположение в настройках приложения&quot;</string>
+    <string name="precise_location_is_needed_to_reveal_small_areas_enable_it_in_app" formatted="false">&quot;Для раскрытия небольших участков нужно точное местоположение. Включи его в разрешениях приложения.&quot;</string>
+    <string name="open_settings" formatted="false">&quot;Открыть настройки&quot;</string>
+    <string name="later" formatted="false">&quot;Позже&quot;</string>
+    <string name="download_paused" formatted="false">&quot;Загрузка приостановлена&quot;</string>
+    <string name="saved_offline_areas" formatted="false">&quot;Сохранено офлайн-областей: &quot;</string>
+    <string name="km_walked_route_points" formatted="false">&quot;%.2f км пройдено · отметок пути: %d&quot;</string>
+    <string name="finding_current_gps_location" formatted="false">&quot;Ищем текущее положение GPS…&quot;</string>
+    <string name="enable_gps_in_device_settings" formatted="false">&quot;Включи GPS в настройках телефона&quot;</string>
+    <string name="could_not_get_gps_location" formatted="false">&quot;Не удалось получить GPS: &quot;</string>
+    <string name="approximate_location" formatted="false">&quot;Примерное положение ±&quot;</string>
+    <string name="m_waiting_for_precise_gps_to_reveal_the_map" formatted="false">&quot; м · ждём точный GPS для окраски&quot;</string>
+    <string name="you_are_here_gps" formatted="false">&quot;Ты здесь · GPS ±&quot;</string>
+    <string name="m_reveal_up_to_100_m" formatted="false">&quot; м · окраска 100 м&quot;</string>
+    <string name="could_not_save_location" formatted="false">&quot;Не удалось сохранить точку&quot;</string>
+    <string name="download_map_to_phone" formatted="false">&quot;Скачать карту на телефон&quot;</string>
+    <string name="paste_a_direct_https_link_to_mbtiles_for_a_large_planet_file_use_" formatted="false">&quot;Вставь прямую HTTPS-ссылку на MBTiles. Для большого файла планеты используй браузер с докачкой, затем «Подключить карту с устройства». Копирование по ссылке требует дополнительного места.&quot;</string>
+    <string name="download" formatted="false">&quot;Скачать&quot;</string>
+    <string name="an_https_link_is_required" formatted="false">&quot;Нужна HTTPS-ссылка&quot;</string>
+    <string name="http_error" formatted="false">&quot;HTTP-ошибка&quot;</string>
+    <string name="connected" formatted="false">&quot;Подключено: &quot;</string>
+    <string name="no_photos_yet_tap_photo_on_the_map" formatted="false">&quot;Пока нет фото. Нажми «＋ Фото» на карте&quot;</string>
+    <string name="photos" formatted="false">&quot;Фотографии · &quot;</string>
+    <string name="return_to_map" formatted="false">&quot;Вернуться к карте&quot;</string>
+    <string name="map_download_in_progress" formatted="false">&quot;Карта скачивается&quot;</string>
+    <string name="continue_download" formatted="false">&quot;Продолжить загрузку&quot;</string>
+    <string name="pause" formatted="false">&quot;Пауза&quot;</string>
+    <string name="unfinished_download_saved" formatted="false">&quot;Сохранена незавершённая загрузка&quot;</string>
+    <string name="completed_sections_are_already_on_your_phone_resume_where_you_lef" formatted="false">&quot;Готовые участки уже на телефоне. Можно продолжить с того же места, даже если ты переместился.&quot;</string>
+    <string name="another_area" formatted="false">&quot;Другая область&quot;</string>
+    <string name="what_would_you_like_to_save_offline" formatted="false">&quot;Что сохранить офлайн?&quot;</string>
+    <string name="atlas_streets_and_buildings_faster" formatted="false">&quot;Атлас: улицы и здания (быстрее)&quot;</string>
+    <string name="atlas_and_satellite_imagery" formatted="false">&quot;Атлас и спутниковые снимки&quot;</string>
+    <string name="wait_for_a_gps_location_or_zoom_in_on_the_area_you_want" formatted="false">&quot;Дождись своего положения GPS или приблизь нужный район карты&quot;</string>
+    <string name="text_1_1_km" formatted="false">&quot;1 × 1 км&quot;</string>
+    <string name="text_4_4_km" formatted="false">&quot;4 × 4 км&quot;</string>
+    <string name="text_20_20_km" formatted="false">&quot;20 × 20 км&quot;</string>
+    <string name="text_50_50_km" formatted="false">&quot;50 × 50 км&quot;</string>
+    <string name="text_100_100_km_for_long_walks" formatted="false">&quot;100 × 100 км — для длинных прогулок&quot;</string>
+    <string name="area_around_map_centre" formatted="false">&quot;Область вокруг центра карты&quot;</string>
+    <string name="save_atlas_and_satellite_imagery_estimated_total_about" formatted="false">&quot;Сохраним атлас и спутник. Общий ориентир: около &quot;</string>
+    <string name="mb" formatted="false">&quot; МБ.&quot;</string>
+    <string name="save_streets_buildings_and_water_satellite_imagery_is_excluded_si" formatted="false">&quot;Сохраним улицы, здания и воду. Спутник не скачивается; объём зависит от плотности карты.&quot;</string>
+    <string name="a_large_area_may_take_several_hours_try_1_4_km_first_downloads_ca" formatted="false">&quot; Большая область может скачиваться несколько часов. Для первой проверки выбери 1–4 км. Доступны пауза и продолжение с готовых частей. Публичные серверы могут быть недоступны.&quot;</string>
+    <string name="start_download" formatted="false">&quot;Начать загрузку&quot;</string>
+    <string name="starting_download" formatted="false">&quot;Начинаем загрузку…&quot;</string>
+    <string name="offline_map_downloads" formatted="false">&quot;Загрузка офлайн-карт&quot;</string>
+    <string name="mapnotes_offline_map" formatted="false">&quot;MapNotes · офлайн-карта&quot;</string>
+    <string name="download_cancelled" formatted="false">&quot;Загрузка отменена&quot;</string>
+    <string name="network_paused_tap_network_on_the_map" formatted="false">&quot;Сеть на паузе · нажми ▶ Сеть на карте&quot;</string>
+    <string name="resuming_download_of_saved_area" formatted="false">&quot;Продолжаем загрузку сохранённой области…&quot;</string>
+    <string name="map_server_http" formatted="false">&quot;Сервер карты: HTTP &quot;</string>
+    <string name="server_interrupted_map_transfer" formatted="false">&quot;Сервер оборвал передачу карты&quot;</string>
+    <string name="server_returned_incomplete_map_data" formatted="false">&quot;Сервер вернул неполную схему&quot;</string>
+    <string name="could_not_save_map" formatted="false">&quot;Не удалось сохранить карту&quot;</string>
+    <string name="low_storage_free_some_space_and_resume_the_download" formatted="false">&quot;Мало памяти телефона. Освободи место и продолжи загрузку&quot;</string>
+    <string name="satellite_server_returned_an_invalid_image" formatted="false">&quot;Спутник вернул неверное изображение&quot;</string>
+    <string name="area" formatted="false">&quot;Область &quot;</string>
+    <string name="km_downloaded" formatted="false">&quot; км скачана: &quot;</string>
+    <string name="map_and_satellite_imagery_offline" formatted="false">&quot;схема и спутник офлайн&quot;</string>
+    <string name="atlas_offline_without_satellite_imagery" formatted="false">&quot;атлас офлайн (без спутника)&quot;</string>
+    <string name="download_paused_tap_resume" formatted="false">&quot;Загрузка приостановлена. Нажми «Продолжить»&quot;</string>
+    <string name="download_stopped" formatted="false">&quot;Загрузка остановлена: &quot;</string>
+    <string name="connecting_local_map" formatted="false">&quot;Подключаем локальную карту…&quot;</string>
+    <string name="vector" formatted="false">&quot; · векторная&quot;</string>
+    <string name="raster" formatted="false">&quot; · растровая&quot;</string>
+    <string name="zoom_levels" formatted="false">&quot; · масштабы &quot;</string>
+    <string name="unsupported_map" formatted="false">&quot;Карта не поддерживается&quot;</string>
+    <string name="could_not_connect_directly" formatted="false">&quot;Не удалось подключить напрямую&quot;</string>
+    <string name="n_nchoose_mbtiles_from_your_local_downloads_folder_if_the_file_pr" formatted="false">&quot;\n\nВыбери MBTiles из локальной папки «Загрузки». Если файловый провайдер не поддерживает прямое чтение, можно скопировать карту в приложение — для этого понадобится дополнительное место размером с файл.&quot;</string>
+    <string name="copy_2" formatted="false">&quot;Скопировать&quot;</string>
+    <string name="copying_map" formatted="false">&quot;Копирование карты&quot;</string>
+    <string name="preparing" formatted="false">&quot;Подготовка…&quot;</string>
+    <string name="could_not_open_file" formatted="false">&quot;Не удалось открыть файл&quot;</string>
+    <string name="copy_cancelled" formatted="false">&quot;Копирование отменено&quot;</string>
+    <string name="not_enough_free_space_for_a_copy" formatted="false">&quot;Недостаточно свободного места для копии&quot;</string>
+    <string name="copied_gb" formatted="false">&quot;Скопировано %.2f ГБ&quot;</string>
+    <string name="map_not_connected" formatted="false">&quot;Карта не подключена&quot;</string>
+    <string name="detailed_world_map" formatted="false">&quot;Подробная карта мира&quot;</string>
+    <string name="vector_mbtiles_using_openmaptiles_or_protomaps_and_raster_mbtiles" formatted="false">&quot;Поддерживаются векторные MBTiles со схемой OpenMapTiles или Protomaps и растровые MBTiles.\n\nДля всей планеты понадобится много места: текущая сборка Quarry около 85 ГБ. Скачай MBTiles браузером с докачкой, сохрани в локальную папку и выбери «Подключить карту с устройства». Файлы PMTiles, .map и исходные .osm.pbf пока не поддерживаются. Спутниковые снимки в векторный файл не входят.&quot;</string>
+    <string name="map_catalogue" formatted="false">&quot;Каталог карт&quot;</string>
+    <string name="connect_file" formatted="false">&quot;Подключить файл&quot;</string>
+    <string name="map_loading_paused" formatted="false">&quot;Подгрузка карт на паузе&quot;</string>
+    <string name="section_too_large" formatted="false">&quot;Слишком большой участок&quot;</string>
+    <string name="server_busy_waiting_30_seconds" formatted="false">&quot;Сервер занят, подождём 30 секунд&quot;</string>
+    <string name="map_section" formatted="false">&quot;Схема: участок &quot;</string>
+    <string name="saved" formatted="false">&quot; · сохранено &quot;</string>
+    <string name="satellite" formatted="false">&quot;Спутник: &quot;</string>
+    <string name="area_2" formatted="false">&quot; · область &quot;</string>
+    <string name="km" formatted="false">&quot; км&quot;</string>
+    <string name="waiting_for_connection_automatic_retry" formatted="false">&quot;Ожидаем связь · автоповтор &quot;</string>
+    <string name="network_error" formatted="false">&quot;ошибка сети&quot;</string>
+    <string name="map_too_dense_completed_sections_are_saved_try_again_later" formatted="false">&quot;Слишком плотная схема. Готовые части сохранены; повтори позже&quot;</string>
+    <string name="could_not_save" formatted="false">&quot;Не удалось сохранить &quot;</string>
+    <string name="atlas_online_loading_paused" formatted="false">&quot;Атлас · онлайн-подгрузка на паузе&quot;</string>
+    <string name="atlas_waiting_for_location" formatted="false">&quot;Атлас · ждём местоположение&quot;</string>
+    <string name="atlas_loading_streets_and_buildings" formatted="false">&quot;Атлас · загружаем улицы и здания&quot;</string>
+    <string name="atlas_map_ready_view_up_to_100_m" formatted="false">&quot;Атлас · карта готова · обзор 100 м&quot;</string>
+    <string name="atlas_no_detailed_map_download_this_area" formatted="false">&quot;Атлас · нет подробной карты: скачай район&quot;</string>
+    <string name="satellite_waiting_for_location" formatted="false">&quot;Спутник: ждём местоположение&quot;</string>
+    <string name="revealing_the_map_requires_precise_gps_within_30_m" formatted="false">&quot;Окраска ждёт точный GPS (до ±30 м)&quot;</string>
+    <string name="satellite_revealed_100_m" formatted="false">&quot;Спутник открыт · 100 м · &quot;</string>
+    <string name="loading_walls" formatted="false">&quot;загружаем стены&quot;</string>
+    <string name="no_wall_outlines_download_this_area" formatted="false">&quot;нет контуров стен: скачай район&quot;</string>
+    <string name="satellite_revealed_visibility_up_to_100_m" formatted="false">&quot;Спутник открыт · видимость до 100 м&quot;</string>
+    <string name="gps_inside_a_building_outside_visibility_unknown" formatted="false">&quot;GPS внутри здания: внешняя видимость не определена&quot;</string>
+    <string name="satellite_revealed_view_up_to_100_m_limited_by_walls" formatted="false">&quot;Спутник открыт · видимость 100 м, стены ограничивают обзор&quot;</string>
+    <string name="no_offline_imagery_download_this_area_while_online" formatted="false">&quot;Нет снимка офлайн: скачай этот район с интернетом&quot;</string>
+    <string name="image_not_loaded" formatted="false">&quot;Снимок не загружен: &quot;</string>
+    <string name="retry_in_10_s" formatted="false">&quot; · повтор через 10 с&quot;</string>
+    <string name="satellite_loading_image" formatted="false">&quot;Спутник: загружаем снимок…&quot;</string>
+    <string name="offline_z" formatted="false">&quot; · офлайн · z&quot;</string>
+    <string name="map_could_not_be_opened" formatted="false">&quot;Карта не открыта: &quot;</string>
+    <string name="you_are_here" formatted="false">&quot;Ты здесь&quot;</string>
+    <string name="streets_and_buildings_not_loaded_retry_in_15_s" formatted="false">&quot;Улицы и здания не загружены · повтор через 15 с&quot;</string>
+    <string name="photos_2" formatted="false">&quot;Фото &quot;</string>
+    <string name="zoom_in_or_open_the_gallery" formatted="false">&quot; · приблизь карту или открой галерею&quot;</string>
+    <string name="photo_2" formatted="false">&quot;ФОТО&quot;</string>
+    <string name="km_2" formatted="false">&quot;%.0f км&quot;</string>
+    <string name="m_2" formatted="false">&quot;%.0f м&quot;</string>
+    <string name="tile_too_large" formatted="false">&quot;Слишком большой фрагмент&quot;</string>
+    <string name="server_did_not_return_an_image" formatted="false">&quot;Сервер вернул не изображение&quot;</string>
+    <string name="could_not_save_image" formatted="false">&quot;Не удалось сохранить снимок&quot;</string>
+    <string name="no_saved_image" formatted="false">&quot;нет сохранённого снимка&quot;</string>
+    <string name="server_not_responding" formatted="false">&quot;нет ответа сервера&quot;</string>
+    <string name="cannot_connect_to_server" formatted="false">&quot;нет связи с сервером&quot;</string>
+    <string name="truncated_vector_tile" formatted="false">&quot;Обрезанный векторный тайл&quot;</string>
+    <string name="mvt_number_too_long" formatted="false">&quot;Слишком длинное число MVT&quot;</string>
+    <string name="invalid_mvt" formatted="false">&quot;Повреждённый MVT&quot;</string>
+    <string name="invalid_mvt_length" formatted="false">&quot;Неверная длина MVT&quot;</string>
+    <string name="label_too_long" formatted="false">&quot;Слишком длинная подпись&quot;</string>
+    <string name="unknown_mvt_field" formatted="false">&quot;Неизвестное поле MVT&quot;</string>
+    <string name="invalid_tile_size" formatted="false">&quot;Некорректный размер тайла&quot;</string>
+    <string name="vector_tile_too_large" formatted="false">&quot;Слишком большой векторный тайл&quot;</string>
+    <string name="too_many_layers" formatted="false">&quot;Слишком много слоёв&quot;</string>
+    <string name="mbtiles_with_mvt_pbf_is_required_rather_than_raw_osm_pbf" formatted="false">&quot;Нужен MBTiles с MVT/PBF, а не исходный OSM PBF&quot;</string>
+    <string name="too_many_features" formatted="false">&quot;Слишком много объектов&quot;</string>
+    <string name="unsupported_mvt_version" formatted="false">&quot;Неподдерживаемая версия MVT&quot;</string>
+    <string name="too_many_attributes" formatted="false">&quot;Слишком много атрибутов&quot;</string>
+    <string name="invalid_attributes" formatted="false">&quot;Повреждённые атрибуты&quot;</string>
+    <string name="invalid_dictionary" formatted="false">&quot;Повреждённый словарь&quot;</string>
+    <string name="invalid_geometry_commands" formatted="false">&quot;Повреждённые команды геометрии&quot;</string>
+    <string name="invalid_polygon_closure" formatted="false">&quot;Неверное замыкание полигона&quot;</string>
+    <string name="unknown_geometry" formatted="false">&quot;Неизвестная геометрия&quot;</string>
+    <string name="geometry_too_complex" formatted="false">&quot;Слишком сложная геометрия&quot;</string>
+    <string name="missing_line_start" formatted="false">&quot;Нет начала линии&quot;</string>
+    <string name="all_map_servers_are_unavailable" formatted="false">&quot;Все серверы схемы недоступны: &quot;</string>
+    <string name="photo_3" formatted="false">&quot;← Фото · &quot;</string>
+    <string name="photo_file_unavailable" formatted="false">&quot;Файл фотографии недоступен&quot;</string>
+    <string name="gps_m" formatted="false">&quot;%.6f; %.6f · GPS ±%.0f м&quot;</string>
+    <string name="show_photo_location_on_map" formatted="false">&quot;Место снимка на карте&quot;</string>
+    <string name="photo_note" formatted="false">&quot;Заметка к фотографии&quot;</string>
+    <string name="save_note" formatted="false">&quot;Сохранить заметку&quot;</string>
+    <string name="note_saved" formatted="false">&quot;Заметка сохранена&quot;</string>
+    <string name="save_to_gallery" formatted="false">&quot;Сохранить в галерею&quot;</string>
+    <string name="original_stays_in_mapnotes_a_copy_appears_in_the_gallery" formatted="false">&quot;Оригинал останется в MapNotes · копия появится в галерее&quot;</string>
+    <string name="not_saved_storage_permission_denied_original_stays_in_mapnotes" formatted="false">&quot;Не сохранено: доступ к хранилищу не разрешён. Оригинал остался в MapNotes.&quot;</string>
+    <string name="saving_to_gallery" formatted="false">&quot;Сохраняем в галерею…&quot;</string>
+    <string name="already_saved_to_pictures_mapnotes_no_new_copy_created" formatted="false">&quot;Уже сохранено в Pictures/MapNotes — новая копия не создана&quot;</string>
+    <string name="saved_to_gallery_pictures_mapnotes" formatted="false">&quot;Сохранено в галерею: Pictures/MapNotes&quot;</string>
+    <string name="not_saved" formatted="false">&quot;Не сохранено: &quot;</string>
+    <string name="gallery_error" formatted="false">&quot;ошибка галереи&quot;</string>
+    <string name="original_stays_in_mapnotes" formatted="false">&quot;. Оригинал остался в MapNotes.&quot;</string>
+    <string name="camera_returned_an_invalid_image" formatted="false">&quot;Камера вернула повреждённый снимок&quot;</string>
+    <string name="could_not_create_photo_folder" formatted="false">&quot;Не удалось создать папку фотографий&quot;</string>
+    <string name="area_must_be_within_100_100_km_centred_between_84_s_and_84_n" formatted="false">&quot;Размер области — до 100×100 км, центр между 84° ю.ш. и 84° с.ш.&quot;</string>
+    <string name="move_the_centre_area_crosses_the_map_boundary" formatted="false">&quot;Сдвинь центр: область пересекает край карты&quot;</string>
+    <string name="too_many_tiles_move_the_centre_to_a_lower_latitude" formatted="false">&quot;Слишком много фрагментов: сдвинь центр к меньшей широте&quot;</string>
+    <string name="walk_recording" formatted="false">&quot;Запись прогулки&quot;</string>
+    <string name="mapnotes_walk_in_progress" formatted="false">&quot;MapNotes · прогулка идёт&quot;</string>
+    <string name="gps_reveals_the_map_tap_stop_to_finish" formatted="false">&quot;Идёт запись путешествия. Нажми «Стоп», чтобы завершить.&quot;</string>
+    <string name="stop" formatted="false">&quot;Стоп&quot;</string>
+    <string name="finding_precise_gps" formatted="false">&quot;Ищем точный GPS…&quot;</string>
+    <string name="gps_unavailable_enable_location" formatted="false">&quot;GPS недоступен: включи геолокацию&quot;</string>
+    <string name="gps_accuracy_unavailable" formatted="false">&quot;Нет точности GPS&quot;</string>
+    <string name="speed_too_high_for_a_walk" formatted="false">&quot;Слишком высокая скорость для прогулки&quot;</string>
+    <string name="place_revealed_accuracy" formatted="false">&quot;Место открыто · точность ±&quot;</string>
+    <string name="file_unavailable" formatted="false">&quot;Файл недоступен&quot;</string>
+    <string name="a_local_file_is_required_save_mbtiles_to_your_phone_s_downloads_f" formatted="false">&quot;Нужен локальный файл: сохрани MBTiles в «Загрузки» телефона&quot;</string>
+    <string name="a_ready_mbtiles_file_is_required_zip_pmtiles_and_raw_osm_pbf_are_" formatted="false">&quot;Нужен готовый файл .mbtiles, не ZIP, PMTiles или исходный OSM PBF&quot;</string>
+    <string name="map_file_truncated" formatted="false">&quot;Файл карты обрезан&quot;</string>
+    <string name="local_world_map" formatted="false">&quot;Локальная карта мира&quot;</string>
+    <string name="file_contains_no_tiles" formatted="false">&quot;В файле нет тайлов&quot;</string>
+    <string name="mbtiles_has_no_tile_index_this_file_would_be_too_slow_on_a_phone" formatted="false">&quot;В MBTiles нет индекса тайлов: такой файл будет слишком медленным для телефона&quot;</string>
+    <string name="invalid_map_zoom_levels" formatted="false">&quot;Некорректные масштабы карты&quot;</string>
+    <string name="empty_map" formatted="false">&quot;Пустая карта&quot;</string>
+    <string name="tile_missing" formatted="false">&quot;Тайл отсутствует&quot;</string>
+    <string name="tile_truncated" formatted="false">&quot;Тайл обрезан&quot;</string>
+    <string name="could_not_read_local_map" formatted="false">&quot;Не удалось прочитать локальную карту&quot;</string>
+    <string name="raster_image_too_large" formatted="false">&quot;Слишком большое растровое изображение&quot;</string>
+    <string name="invalid_raster_tile" formatted="false">&quot;Повреждённый растровый тайл&quot;</string>
+    <string name="start_a_walk_and_allow_precise_location_the_map_is_revealed_in_a_" formatted="false">&quot;Начни прогулку и разреши точное местоположение. Карта раскрывается непрерывной полосой вдоль пути, до 100 м с учётом стен. Погрешность самого GPS показана отдельным кругом.\n\nЗапись продолжится с выключенным экраном, пока ты не нажмёшь «Стоп». Прогресс хранится только на телефоне.\n\nВесь мир доступен офлайн в общих очертаниях. Улицы и спутник можно сохранить кнопкой «Скачать район офлайн». Пока карта открыта, положение и цвет обновляются автоматически. Кнопка прогулки включает запись с выключенным экраном.&quot;</string>
+    <string name="gps_accuracy_within_30_m_speed_up_to_4_5_m_s_with_additional_accu" formatted="false">&quot;GPS: точность до 30 м; скорость до 4,5 м/с с дополнительной проверкой погрешности. Скачки и подмена GPS не раскрывают карту.\n\nОфлайн: подключение векторных MBTiles (OpenMapTiles/Protomaps MVT/PBF) и растровых MBTiles. Подробная карта работает в стиле атласа. Файл планеты хранится на телефоне, читаются только нужные участки. Исходные OSM PBF и PMTiles не поддерживаются.\n\nУлицы: © OpenStreetMap contributors, openstreetmap.org/copyright. Загружаются только видимые фрагменты. Кнопка «Скачать район офлайн» сохраняет улицы и здания через Overpass, а также спутник EOX.\n\nЛокальные MBTiles показываются в атласе: векторные улицы, здания, вода и названия. Спутник выбирается отдельным режимом и не входит в векторный файл. Снимки обзорные (около 10 м/пиксель), 2016 года. EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016), CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ . Лицензия OSM: https://www.openstreetmap.org/copyright . При загрузке источники получают границы выбранного района. Координаты прогулок хранятся локально.&quot;</string>
+    <string name="map_section_progress">&quot;Схема: участок %1$d / %2$d · сохранено %3$d&quot;</string>
+    <string name="satellite_progress">&quot;Спутник: %1$d / %2$d · область %3$d×%3$d км&quot;</string>
+    <string name="retry_progress">&quot;Ожидаем связь · автоповтор %1$d · %2$s&quot;</string>
+    <string name="download_complete">&quot;Область %1$d×%1$d км скачана: %2$s&quot;</string>
+    <string name="walk_accuracy">&quot;Запись · точность GPS ±%1$d м&quot;</string>
+    <string name="zoom_in">&quot;Приблизить&quot;</string>
+    <string name="zoom_out">&quot;Отдалить&quot;</string>
+    <string name="my_location">&quot;Моё местоположение&quot;</string>
+    <string name="map_options">&quot;Параметры карты&quot;</string>
+    <string name="map_accessibility">&quot;Карта. Перемещай одним пальцем, меняй масштаб двумя. Кнопка «Моё местоположение» включает слежение за GPS.&quot;</string>
+    <string name="photo_accessibility">&quot;Фотография. Масштаб — двумя пальцами, сброс — двойным нажатием.&quot;</string>
+    <string name="back_to_photos">&quot;Вернуться к карте&quot;</string>
     <string name="download_failure">Загрузка остановлена: %1$s</string>
     <string name="world_map_unavailable">Обзорная карта недоступна</string>
     <string name="map_attribution">© OpenStreetMap · OpenMapTiles · Natural Earth · EOX</string>

@@ -52,296 +52,296 @@
     <string name="crash_report">Crash report</string>
     <string name="map_sources">Where to download world maps</string>
     <string name="disconnect_map">Disconnect current map</string>
-    <string name="network_paused" formatted="false">"Network paused"</string>
-    <string name="too_many_buildings" formatted="false">"Too many buildings"</string>
-    <string name="incomplete_building_data" formatted="false">"Incomplete building data"</string>
-    <string name="could_not_save_buildings" formatted="false">"Could not save buildings"</string>
-    <string name="light_on" formatted="false">"Light: on"</string>
-    <string name="light_off" formatted="false">"Light: off"</string>
-    <string name="photo_size" formatted="false">"Photo size"</string>
-    <string name="mp" formatted="false">"%.1f MP"</string>
-    <string name="map_location_gps" formatted="false">"Map location · GPS ±"</string>
-    <string name="m" formatted="false">" m"</string>
-    <string name="waiting_for_gps_a_fresh_location_is_needed_for_a_photo" formatted="false">"Waiting for GPS · a fresh location is needed for a photo"</string>
-    <string name="could_not_turn_on_light" formatted="false">"Could not turn on light: "</string>
-    <string name="map" formatted="false">"‹ Map"</string>
-    <string name="preparing_camera_and_location" formatted="false">"Preparing camera and location…"</string>
-    <string name="take_a_photo_with_a_map_location" formatted="false">"Take a photo with a map location"</string>
-    <string name="mp_2" formatted="false">"%d × %d · %.1f MP"</string>
-    <string name="photo_dimensions" formatted="false">"Photo dimensions"</string>
-    <string name="allow_location_access_to_place_photos_on_the_map" formatted="false">"Allow location access to place photos on the map"</string>
-    <string name="no_camera_on_this_device" formatted="false">"No camera on this device"</string>
-    <string name="camera_did_not_report_supported_formats" formatted="false">"Camera did not report supported formats"</string>
-    <string name="could_not_save_photo" formatted="false">"Could not save photo: "</string>
-    <string name="could_not_receive_photo" formatted="false">"Could not receive photo: "</string>
-    <string name="camera_disconnected_return_to_the_map_and_open_it_again" formatted="false">"Camera disconnected. Return to the map and open it again."</string>
-    <string name="camera_error" formatted="false">"Camera error "</string>
-    <string name="return_to_the_map_and_open_the_camera_again" formatted="false">". Return to the map and open the camera again."</string>
-    <string name="could_not_open_camera" formatted="false">"Could not open camera: "</string>
-    <string name="no_preview_available" formatted="false">"No preview available"</string>
-    <string name="jpeg_format_unavailable" formatted="false">"JPEG format unavailable"</string>
-    <string name="camera_ready_the_original_will_be_saved_in_mapnotes" formatted="false">"Camera ready · the original will be saved in MapNotes"</string>
-    <string name="preview_error" formatted="false">"Preview error: "</string>
-    <string name="camera_does_not_support_the_selected_mode" formatted="false">"Camera does not support the selected mode"</string>
-    <string name="camera_is_not_ready_yet" formatted="false">"Camera is not ready yet"</string>
-    <string name="waiting_for_a_fresh_location_to_place_the_photo_on_the_map" formatted="false">"Waiting for a fresh location to place the photo on the map"</string>
-    <string name="saving_photo" formatted="false">"Saving photo…"</string>
-    <string name="photo_capture_failed_try_again" formatted="false">"Photo capture failed. Try again"</string>
-    <string name="could_not_take_photo" formatted="false">"Could not take photo: "</string>
-    <string name="camera_permission_is_required_to_take_photos" formatted="false">"Camera permission is required to take photos"</string>
-    <string name="wait_for_the_photo_to_finish_saving" formatted="false">"Wait for the photo to finish saving"</string>
-    <string name="last_exit" formatted="false">"Last exit: "</string>
-    <string name="nandroid_reason" formatted="false">"\nAndroid reason: "</string>
-    <string name="no_crash_report_has_been_recorded_yet" formatted="false">"No crash report has been recorded yet."</string>
-    <string name="app_not_responding_anr" formatted="false">"app not responding (ANR)"</string>
-    <string name="out_of_memory" formatted="false">"out of memory"</string>
-    <string name="java_crash" formatted="false">"Java crash"</string>
-    <string name="native_code_crash" formatted="false">"native code crash"</string>
-    <string name="stopped_during_app_update" formatted="false">"stopped during app update"</string>
-    <string name="stopped_by_user_or_update" formatted="false">"stopped by user or update"</string>
-    <string name="code" formatted="false">"code "</string>
-    <string name="copy" formatted="false">"Copy"</string>
-    <string name="close" formatted="false">"Close"</string>
-    <string name="could_not_check_gallery_publication" formatted="false">"Could not check gallery publication"</string>
-    <string name="permission_to_save_to_gallery_is_missing" formatted="false">"Permission to save to gallery is missing"</string>
-    <string name="original_photo_unavailable" formatted="false">"Original photo unavailable"</string>
-    <string name="could_not_save_export_state" formatted="false">"Could not save export state"</string>
-    <string name="could_not_prepare_to_save_again" formatted="false">"Could not prepare to save again"</string>
-    <string name="gallery_unavailable" formatted="false">"Gallery unavailable"</string>
-    <string name="could_not_create_pictures_mapnotes" formatted="false">"Could not create Pictures/MapNotes"</string>
-    <string name="gallery_did_not_create_an_entry" formatted="false">"Gallery did not create an entry"</string>
-    <string name="could_not_prepare_export" formatted="false">"Could not prepare export"</string>
-    <string name="gallery_did_not_open_the_file" formatted="false">"Gallery did not open the file"</string>
-    <string name="gallery_copy_size_does_not_match_the_original" formatted="false">"Gallery copy size does not match the original"</string>
-    <string name="gallery_did_not_publish_the_photo" formatted="false">"Gallery did not publish the photo"</string>
-    <string name="could_not_save_export_state_try_saving_again" formatted="false">"Could not save export state; try saving again"</string>
-    <string name="mock_gps_location" formatted="false">"Mock GPS location"</string>
-    <string name="invalid_coordinates" formatted="false">"Invalid coordinates"</string>
-    <string name="poor_gps_accuracy" formatted="false">"Poor GPS accuracy"</string>
-    <string name="stale_location" formatted="false">"Stale location"</string>
-    <string name="invalid_gps_time" formatted="false">"Invalid GPS time"</string>
-    <string name="gps_gap_waiting_for_the_next_location" formatted="false">"GPS gap: waiting for the next location"</string>
-    <string name="too_fast_gps_jump" formatted="false">"Too fast / GPS jump"</string>
-    <string name="waiting_for_current_location" formatted="false">"Waiting for current location…"</string>
-    <string name="unfinished_walk" formatted="false">"Unfinished walk"</string>
-    <string name="recording_was_interrupted_total_time_includes_the_break_the_route" formatted="false">"Recording was interrupted. Total time includes the break; the route is not joined across it."</string>
-    <string name="resume" formatted="false">"Resume"</string>
-    <string name="finish_now" formatted="false">"Finish now"</string>
-    <string name="the_world_awaits_your_footsteps" formatted="false">"The world awaits your footsteps"</string>
-    <string name="got_it" formatted="false">"Got it"</string>
-    <string name="no_walks_yet_earlier_locations_and_photos_are_kept_separately_wit" formatted="false">"No walks yet. Earlier locations and photos are kept separately without invented walks."</string>
-    <string name="unfinished" formatted="false">" · unfinished"</string>
-    <string name="km_total_time_h_min_s_nincludes_breaks_and_waiting_for_gps_photos" formatted="false">"%.2f km · total time %d h %02d min %02d s\nIncludes breaks and waiting for GPS. Photos during this period: %d"</string>
-    <string name="show_walk_location_on_map" formatted="false">"Show walk location on map"</string>
-    <string name="photo" formatted="false">"Photo #"</string>
-    <string name="back_to_map" formatted="false">"Back to map"</string>
-    <string name="could_not_start_gps" formatted="false">"Could not start GPS: "</string>
-    <string name="camera_and_location_access_are_required_for_geotagged_photos" formatted="false">"Camera and location access are required for geotagged photos"</string>
-    <string name="allow_precise_location_in_app_settings" formatted="false">"Allow precise location in app settings"</string>
-    <string name="precise_location_is_needed_to_reveal_small_areas_enable_it_in_app" formatted="false">"Precise location is needed to reveal small areas. Enable it in app permissions."</string>
-    <string name="open_settings" formatted="false">"Open settings"</string>
-    <string name="later" formatted="false">"Later"</string>
-    <string name="download_paused" formatted="false">"Download paused"</string>
-    <string name="saved_offline_areas" formatted="false">"Saved offline areas: "</string>
-    <string name="km_walked_route_points" formatted="false">"%.2f km walked · route points: %d"</string>
-    <string name="finding_current_gps_location" formatted="false">"Finding current GPS location…"</string>
-    <string name="enable_gps_in_device_settings" formatted="false">"Enable GPS in device settings"</string>
-    <string name="could_not_get_gps_location" formatted="false">"Could not get GPS location: "</string>
-    <string name="approximate_location" formatted="false">"Approximate location ±"</string>
-    <string name="m_waiting_for_precise_gps_to_reveal_the_map" formatted="false">" m · waiting for precise GPS to reveal the map"</string>
-    <string name="you_are_here_gps" formatted="false">"You are here · GPS ±"</string>
-    <string name="m_reveal_up_to_100_m" formatted="false">" m · reveal up to 100 m"</string>
-    <string name="could_not_save_location" formatted="false">"Could not save location"</string>
-    <string name="download_map_to_phone" formatted="false">"Download map to phone"</string>
-    <string name="paste_a_direct_https_link_to_mbtiles_for_a_large_planet_file_use_" formatted="false">"Paste a direct HTTPS link to MBTiles. For a large planet file, use a browser with resumable downloads, then “Connect a map file”. Copying from a link requires additional space."</string>
-    <string name="download" formatted="false">"Download"</string>
-    <string name="an_https_link_is_required" formatted="false">"An HTTPS link is required"</string>
-    <string name="http_error" formatted="false">"HTTP error"</string>
-    <string name="connected" formatted="false">"Connected: "</string>
-    <string name="no_photos_yet_tap_photo_on_the_map" formatted="false">"No photos yet. Tap “＋ Photo” on the map"</string>
-    <string name="photos" formatted="false">"Photos · "</string>
-    <string name="return_to_map" formatted="false">"Return to map"</string>
-    <string name="map_download_in_progress" formatted="false">"Map download in progress"</string>
-    <string name="continue_download" formatted="false">"Continue download"</string>
-    <string name="pause" formatted="false">"Pause"</string>
-    <string name="unfinished_download_saved" formatted="false">"Unfinished download saved"</string>
-    <string name="completed_sections_are_already_on_your_phone_resume_where_you_lef" formatted="false">"Completed sections are already on your phone. Resume where you left off, even if you have moved."</string>
-    <string name="another_area" formatted="false">"Another area"</string>
-    <string name="what_would_you_like_to_save_offline" formatted="false">"What would you like to save offline?"</string>
-    <string name="atlas_streets_and_buildings_faster" formatted="false">"Atlas: streets and buildings (faster)"</string>
-    <string name="atlas_and_satellite_imagery" formatted="false">"Atlas and satellite imagery"</string>
-    <string name="wait_for_a_gps_location_or_zoom_in_on_the_area_you_want" formatted="false">"Wait for a GPS location or zoom in on the area you want"</string>
-    <string name="text_1_1_km" formatted="false">"1 × 1 km"</string>
-    <string name="text_4_4_km" formatted="false">"4 × 4 km"</string>
-    <string name="text_20_20_km" formatted="false">"20 × 20 km"</string>
-    <string name="text_50_50_km" formatted="false">"50 × 50 km"</string>
-    <string name="text_100_100_km_for_long_walks" formatted="false">"100 × 100 km — for long walks"</string>
-    <string name="area_around_map_centre" formatted="false">"Area around map centre"</string>
-    <string name="save_atlas_and_satellite_imagery_estimated_total_about" formatted="false">"Save atlas and satellite imagery. Estimated total: about "</string>
-    <string name="mb" formatted="false">" MB."</string>
-    <string name="save_streets_buildings_and_water_satellite_imagery_is_excluded_si" formatted="false">"Save streets, buildings and water. Satellite imagery is excluded; size depends on map density."</string>
-    <string name="a_large_area_may_take_several_hours_try_1_4_km_first_downloads_ca" formatted="false">" A large area may take several hours. Try 1–4 km first. Downloads can be paused and resumed from completed sections. Public servers may be unavailable."</string>
-    <string name="start_download" formatted="false">"Start download"</string>
-    <string name="starting_download" formatted="false">"Starting download…"</string>
-    <string name="offline_map_downloads" formatted="false">"Offline map downloads"</string>
-    <string name="mapnotes_offline_map" formatted="false">"MapNotes · offline map"</string>
-    <string name="download_cancelled" formatted="false">"Download cancelled"</string>
-    <string name="network_paused_tap_network_on_the_map" formatted="false">"Network paused · tap ▶ Network on the map"</string>
-    <string name="resuming_download_of_saved_area" formatted="false">"Resuming download of saved area…"</string>
-    <string name="map_server_http" formatted="false">"Map server: HTTP "</string>
-    <string name="server_interrupted_map_transfer" formatted="false">"Server interrupted map transfer"</string>
-    <string name="server_returned_incomplete_map_data" formatted="false">"Server returned incomplete map data"</string>
-    <string name="could_not_save_map" formatted="false">"Could not save map"</string>
-    <string name="low_storage_free_some_space_and_resume_the_download" formatted="false">"Low storage. Free some space and resume the download"</string>
-    <string name="satellite_server_returned_an_invalid_image" formatted="false">"Satellite server returned an invalid image"</string>
-    <string name="area" formatted="false">"Area "</string>
-    <string name="km_downloaded" formatted="false">" km downloaded: "</string>
-    <string name="map_and_satellite_imagery_offline" formatted="false">"map and satellite imagery offline"</string>
-    <string name="atlas_offline_without_satellite_imagery" formatted="false">"atlas offline (without satellite imagery)"</string>
-    <string name="download_paused_tap_resume" formatted="false">"Download paused. Tap “Resume”"</string>
-    <string name="download_stopped" formatted="false">"Download stopped: "</string>
-    <string name="connecting_local_map" formatted="false">"Connecting local map…"</string>
-    <string name="vector" formatted="false">" · vector"</string>
-    <string name="raster" formatted="false">" · raster"</string>
-    <string name="zoom_levels" formatted="false">" · zoom levels "</string>
-    <string name="unsupported_map" formatted="false">"Unsupported map"</string>
-    <string name="could_not_connect_directly" formatted="false">"Could not connect directly"</string>
-    <string name="n_nchoose_mbtiles_from_your_local_downloads_folder_if_the_file_pr" formatted="false">"\n\nChoose MBTiles from your local Downloads folder. If the file provider does not support direct reading, copy the map into the app. This needs additional space equal to the file size."</string>
-    <string name="copy_2" formatted="false">"Copy"</string>
-    <string name="copying_map" formatted="false">"Copying map"</string>
-    <string name="preparing" formatted="false">"Preparing…"</string>
-    <string name="could_not_open_file" formatted="false">"Could not open file"</string>
-    <string name="copy_cancelled" formatted="false">"Copy cancelled"</string>
-    <string name="not_enough_free_space_for_a_copy" formatted="false">"Not enough free space for a copy"</string>
-    <string name="copied_gb" formatted="false">"Copied %.2f GB"</string>
-    <string name="map_not_connected" formatted="false">"Map not connected"</string>
-    <string name="detailed_world_map" formatted="false">"Detailed world map"</string>
-    <string name="vector_mbtiles_using_openmaptiles_or_protomaps_and_raster_mbtiles" formatted="false">"Vector MBTiles using OpenMapTiles or Protomaps and raster MBTiles are supported.\n\nA planet file requires substantial storage: the current Quarry build is about 85 GB. Download MBTiles using a browser with resumable downloads, save it locally, then choose “Connect a map file”. PMTiles, .map and raw .osm.pbf files are not supported yet. Satellite imagery is not included in vector files."</string>
-    <string name="map_catalogue" formatted="false">"Map catalogue"</string>
-    <string name="connect_file" formatted="false">"Connect file"</string>
-    <string name="map_loading_paused" formatted="false">"Map loading paused"</string>
-    <string name="section_too_large" formatted="false">"Section too large"</string>
-    <string name="server_busy_waiting_30_seconds" formatted="false">"Server busy, waiting 30 seconds"</string>
-    <string name="map_section" formatted="false">"Map: section "</string>
-    <string name="saved" formatted="false">" · saved "</string>
-    <string name="satellite" formatted="false">"Satellite: "</string>
-    <string name="area_2" formatted="false">" · area "</string>
-    <string name="km" formatted="false">" km"</string>
-    <string name="waiting_for_connection_automatic_retry" formatted="false">"Waiting for connection · automatic retry "</string>
-    <string name="network_error" formatted="false">"network error"</string>
-    <string name="map_too_dense_completed_sections_are_saved_try_again_later" formatted="false">"Map too dense. Completed sections are saved; try again later"</string>
-    <string name="could_not_save" formatted="false">"Could not save "</string>
-    <string name="atlas_online_loading_paused" formatted="false">"Atlas · online loading paused"</string>
-    <string name="atlas_waiting_for_location" formatted="false">"Atlas · waiting for location"</string>
-    <string name="atlas_loading_streets_and_buildings" formatted="false">"Atlas · loading streets and buildings"</string>
-    <string name="atlas_map_ready_view_up_to_100_m" formatted="false">"Atlas · map ready · view up to 100 m"</string>
-    <string name="atlas_no_detailed_map_download_this_area" formatted="false">"Atlas · no detailed map: download this area"</string>
-    <string name="satellite_waiting_for_location" formatted="false">"Satellite: waiting for location"</string>
-    <string name="revealing_the_map_requires_precise_gps_within_30_m" formatted="false">"Revealing the map requires precise GPS (within ±30 m)"</string>
-    <string name="satellite_revealed_100_m" formatted="false">"Satellite revealed · 100 m · "</string>
-    <string name="loading_walls" formatted="false">"loading walls"</string>
-    <string name="no_wall_outlines_download_this_area" formatted="false">"no wall outlines: download this area"</string>
-    <string name="satellite_revealed_visibility_up_to_100_m" formatted="false">"Satellite revealed · visibility up to 100 m"</string>
-    <string name="gps_inside_a_building_outside_visibility_unknown" formatted="false">"GPS inside a building: outside visibility unknown"</string>
-    <string name="satellite_revealed_view_up_to_100_m_limited_by_walls" formatted="false">"Satellite revealed · view up to 100 m, limited by walls"</string>
-    <string name="no_offline_imagery_download_this_area_while_online" formatted="false">"No offline imagery: download this area while online"</string>
-    <string name="image_not_loaded" formatted="false">"Image not loaded: "</string>
-    <string name="retry_in_10_s" formatted="false">" · retry in 10 s"</string>
-    <string name="satellite_loading_image" formatted="false">"Satellite: loading image…"</string>
-    <string name="offline_z" formatted="false">" · offline · z"</string>
-    <string name="map_could_not_be_opened" formatted="false">"Map could not be opened: "</string>
-    <string name="you_are_here" formatted="false">"You are here"</string>
-    <string name="streets_and_buildings_not_loaded_retry_in_15_s" formatted="false">"Streets and buildings not loaded · retry in 15 s"</string>
-    <string name="photos_2" formatted="false">"Photos "</string>
-    <string name="zoom_in_or_open_the_gallery" formatted="false">" · zoom in or open the gallery"</string>
-    <string name="photo_2" formatted="false">"PHOTO"</string>
-    <string name="km_2" formatted="false">"%.0f km"</string>
-    <string name="m_2" formatted="false">"%.0f m"</string>
-    <string name="tile_too_large" formatted="false">"Tile too large"</string>
-    <string name="server_did_not_return_an_image" formatted="false">"Server did not return an image"</string>
-    <string name="could_not_save_image" formatted="false">"Could not save image"</string>
-    <string name="no_saved_image" formatted="false">"no saved image"</string>
-    <string name="server_not_responding" formatted="false">"server not responding"</string>
-    <string name="cannot_connect_to_server" formatted="false">"cannot connect to server"</string>
-    <string name="truncated_vector_tile" formatted="false">"Truncated vector tile"</string>
-    <string name="mvt_number_too_long" formatted="false">"MVT number too long"</string>
-    <string name="invalid_mvt" formatted="false">"Invalid MVT"</string>
-    <string name="invalid_mvt_length" formatted="false">"Invalid MVT length"</string>
-    <string name="label_too_long" formatted="false">"Label too long"</string>
-    <string name="unknown_mvt_field" formatted="false">"Unknown MVT field"</string>
-    <string name="invalid_tile_size" formatted="false">"Invalid tile size"</string>
-    <string name="vector_tile_too_large" formatted="false">"Vector tile too large"</string>
-    <string name="too_many_layers" formatted="false">"Too many layers"</string>
-    <string name="mbtiles_with_mvt_pbf_is_required_rather_than_raw_osm_pbf" formatted="false">"MBTiles with MVT/PBF is required, rather than raw OSM PBF"</string>
-    <string name="too_many_features" formatted="false">"Too many features"</string>
-    <string name="unsupported_mvt_version" formatted="false">"Unsupported MVT version"</string>
-    <string name="too_many_attributes" formatted="false">"Too many attributes"</string>
-    <string name="invalid_attributes" formatted="false">"Invalid attributes"</string>
-    <string name="invalid_dictionary" formatted="false">"Invalid dictionary"</string>
-    <string name="invalid_geometry_commands" formatted="false">"Invalid geometry commands"</string>
-    <string name="invalid_polygon_closure" formatted="false">"Invalid polygon closure"</string>
-    <string name="unknown_geometry" formatted="false">"Unknown geometry"</string>
-    <string name="geometry_too_complex" formatted="false">"Geometry too complex"</string>
-    <string name="missing_line_start" formatted="false">"Missing line start"</string>
-    <string name="all_map_servers_are_unavailable" formatted="false">"All map servers are unavailable: "</string>
-    <string name="photo_3" formatted="false">"← Photo · "</string>
-    <string name="photo_file_unavailable" formatted="false">"Photo file unavailable"</string>
-    <string name="gps_m" formatted="false">"%.6f, %.6f · GPS ±%.0f m"</string>
-    <string name="show_photo_location_on_map" formatted="false">"Show photo location on map"</string>
-    <string name="photo_note" formatted="false">"Photo note"</string>
-    <string name="save_note" formatted="false">"Save note"</string>
-    <string name="note_saved" formatted="false">"Note saved"</string>
-    <string name="save_to_gallery" formatted="false">"Save to gallery"</string>
-    <string name="original_stays_in_mapnotes_a_copy_appears_in_the_gallery" formatted="false">"Original stays in MapNotes · a copy appears in the gallery"</string>
-    <string name="not_saved_storage_permission_denied_original_stays_in_mapnotes" formatted="false">"Not saved: storage permission denied. Original stays in MapNotes."</string>
-    <string name="saving_to_gallery" formatted="false">"Saving to gallery…"</string>
-    <string name="already_saved_to_pictures_mapnotes_no_new_copy_created" formatted="false">"Already saved to Pictures/MapNotes — no new copy created"</string>
-    <string name="saved_to_gallery_pictures_mapnotes" formatted="false">"Saved to gallery: Pictures/MapNotes"</string>
-    <string name="not_saved" formatted="false">"Not saved: "</string>
-    <string name="gallery_error" formatted="false">"gallery error"</string>
-    <string name="original_stays_in_mapnotes" formatted="false">". Original stays in MapNotes."</string>
-    <string name="camera_returned_an_invalid_image" formatted="false">"Camera returned an invalid image"</string>
-    <string name="could_not_create_photo_folder" formatted="false">"Could not create photo folder"</string>
-    <string name="area_must_be_within_100_100_km_centred_between_84_s_and_84_n" formatted="false">"Area must be within 100×100 km, centred between 84° S and 84° N"</string>
-    <string name="move_the_centre_area_crosses_the_map_boundary" formatted="false">"Move the centre: area crosses the map boundary"</string>
-    <string name="too_many_tiles_move_the_centre_to_a_lower_latitude" formatted="false">"Too many tiles: move the centre to a lower latitude"</string>
-    <string name="walk_recording" formatted="false">"Walk recording"</string>
-    <string name="mapnotes_walk_in_progress" formatted="false">"MapNotes · walk in progress"</string>
-    <string name="gps_reveals_the_map_tap_stop_to_finish" formatted="false">"Recording your journey. Tap “Stop” to finish."</string>
-    <string name="stop" formatted="false">"Stop"</string>
-    <string name="finding_precise_gps" formatted="false">"Finding precise GPS…"</string>
-    <string name="gps_unavailable_enable_location" formatted="false">"GPS unavailable: enable location"</string>
-    <string name="gps_accuracy_unavailable" formatted="false">"GPS accuracy unavailable"</string>
-    <string name="speed_too_high_for_a_walk" formatted="false">"Speed too high for a walk"</string>
-    <string name="place_revealed_accuracy" formatted="false">"Place revealed · accuracy ±"</string>
-    <string name="file_unavailable" formatted="false">"File unavailable"</string>
-    <string name="a_local_file_is_required_save_mbtiles_to_your_phone_s_downloads_f" formatted="false">"A local file is required: save MBTiles to your phone’s Downloads folder"</string>
-    <string name="a_ready_mbtiles_file_is_required_zip_pmtiles_and_raw_osm_pbf_are_" formatted="false">"A ready .mbtiles file is required; ZIP, PMTiles and raw OSM PBF are unsupported"</string>
-    <string name="map_file_truncated" formatted="false">"Map file truncated"</string>
-    <string name="local_world_map" formatted="false">"Local world map"</string>
-    <string name="file_contains_no_tiles" formatted="false">"File contains no tiles"</string>
-    <string name="mbtiles_has_no_tile_index_this_file_would_be_too_slow_on_a_phone" formatted="false">"MBTiles has no tile index: this file would be too slow on a phone"</string>
-    <string name="invalid_map_zoom_levels" formatted="false">"Invalid map zoom levels"</string>
-    <string name="empty_map" formatted="false">"Empty map"</string>
-    <string name="tile_missing" formatted="false">"Tile missing"</string>
-    <string name="tile_truncated" formatted="false">"Tile truncated"</string>
-    <string name="could_not_read_local_map" formatted="false">"Could not read local map"</string>
-    <string name="raster_image_too_large" formatted="false">"Raster image too large"</string>
-    <string name="invalid_raster_tile" formatted="false">"Invalid raster tile"</string>
-    <string name="start_a_walk_and_allow_precise_location_the_map_is_revealed_in_a_" formatted="false">"Start a walk and allow precise location. The map is revealed in a continuous trail along your route, up to 100 m with walls taken into account. GPS accuracy is shown as a separate circle.\n\nRecording continues with the screen off until you tap “Stop”. Progress is stored only on your phone.\n\nWorld outlines are available offline. Save streets and satellite imagery with “Download offline area”. While the map is open, your location and colours update automatically. Walk recording keeps working with the screen off."</string>
-    <string name="gps_accuracy_within_30_m_speed_up_to_4_5_m_s_with_additional_accu" formatted="false">"GPS: accuracy within 30 m; speed up to 4.5 m/s with additional accuracy checks. GPS jumps and mock locations do not reveal the map.\n\nOffline: connect vector MBTiles (OpenMapTiles/Protomaps MVT/PBF) or raster MBTiles. Detailed maps use the atlas style. The planet file stays on your phone; only needed sections are read. Raw OSM PBF and PMTiles are unsupported.\n\nStreets: © OpenStreetMap contributors, openstreetmap.org/copyright. Only visible sections are loaded. “Download offline area” saves streets and buildings via Overpass, with optional EOX satellite imagery.\n\nLocal MBTiles show vector streets, buildings, water and names in the atlas. Satellite imagery is a separate mode and is not included in vector files. Overview imagery is about 10 m/pixel, from 2016. EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016), CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ . OSM licence: https://www.openstreetmap.org/copyright . Download providers receive the selected area bounds. Walk coordinates stay local."</string>
-    <string name="map_section_progress">"Map: section %1$d / %2$d · saved %3$d"</string>
-    <string name="satellite_progress">"Satellite: %1$d / %2$d · area %3$d×%3$d km"</string>
-    <string name="retry_progress">"Waiting for connection · automatic retry %1$d · %2$s"</string>
-    <string name="download_complete">"Area %1$d×%1$d km downloaded: %2$s"</string>
-    <string name="walk_accuracy">"Recording · GPS accuracy ±%1$d m"</string>
-    <string name="zoom_in">"Zoom in"</string>
-    <string name="zoom_out">"Zoom out"</string>
-    <string name="my_location">"My location"</string>
-    <string name="map_options">"Map options"</string>
-    <string name="map_accessibility">"Map. Drag to pan, pinch to zoom. Use My location to follow GPS."</string>
-    <string name="photo_accessibility">"Photo. Pinch to zoom, double tap to fit."</string>
-    <string name="back_to_photos">"Back to map"</string>
+    <string name="network_paused" formatted="false">&quot;Network paused&quot;</string>
+    <string name="too_many_buildings" formatted="false">&quot;Too many buildings&quot;</string>
+    <string name="incomplete_building_data" formatted="false">&quot;Incomplete building data&quot;</string>
+    <string name="could_not_save_buildings" formatted="false">&quot;Could not save buildings&quot;</string>
+    <string name="light_on" formatted="false">&quot;Light: on&quot;</string>
+    <string name="light_off" formatted="false">&quot;Light: off&quot;</string>
+    <string name="photo_size" formatted="false">&quot;Photo size&quot;</string>
+    <string name="mp" formatted="false">&quot;%.1f MP&quot;</string>
+    <string name="map_location_gps" formatted="false">&quot;Map location · GPS ±&quot;</string>
+    <string name="m" formatted="false">&quot; m&quot;</string>
+    <string name="waiting_for_gps_a_fresh_location_is_needed_for_a_photo" formatted="false">&quot;Waiting for GPS · a fresh location is needed for a photo&quot;</string>
+    <string name="could_not_turn_on_light" formatted="false">&quot;Could not turn on light: &quot;</string>
+    <string name="map" formatted="false">&quot;‹ Map&quot;</string>
+    <string name="preparing_camera_and_location" formatted="false">&quot;Preparing camera and location…&quot;</string>
+    <string name="take_a_photo_with_a_map_location" formatted="false">&quot;Take a photo with a map location&quot;</string>
+    <string name="mp_2" formatted="false">&quot;%d × %d · %.1f MP&quot;</string>
+    <string name="photo_dimensions" formatted="false">&quot;Photo dimensions&quot;</string>
+    <string name="allow_location_access_to_place_photos_on_the_map" formatted="false">&quot;Allow location access to place photos on the map&quot;</string>
+    <string name="no_camera_on_this_device" formatted="false">&quot;No camera on this device&quot;</string>
+    <string name="camera_did_not_report_supported_formats" formatted="false">&quot;Camera did not report supported formats&quot;</string>
+    <string name="could_not_save_photo" formatted="false">&quot;Could not save photo: &quot;</string>
+    <string name="could_not_receive_photo" formatted="false">&quot;Could not receive photo: &quot;</string>
+    <string name="camera_disconnected_return_to_the_map_and_open_it_again" formatted="false">&quot;Camera disconnected. Return to the map and open it again.&quot;</string>
+    <string name="camera_error" formatted="false">&quot;Camera error &quot;</string>
+    <string name="return_to_the_map_and_open_the_camera_again" formatted="false">&quot;. Return to the map and open the camera again.&quot;</string>
+    <string name="could_not_open_camera" formatted="false">&quot;Could not open camera: &quot;</string>
+    <string name="no_preview_available" formatted="false">&quot;No preview available&quot;</string>
+    <string name="jpeg_format_unavailable" formatted="false">&quot;JPEG format unavailable&quot;</string>
+    <string name="camera_ready_the_original_will_be_saved_in_mapnotes" formatted="false">&quot;Camera ready · the original will be saved in MapNotes&quot;</string>
+    <string name="preview_error" formatted="false">&quot;Preview error: &quot;</string>
+    <string name="camera_does_not_support_the_selected_mode" formatted="false">&quot;Camera does not support the selected mode&quot;</string>
+    <string name="camera_is_not_ready_yet" formatted="false">&quot;Camera is not ready yet&quot;</string>
+    <string name="waiting_for_a_fresh_location_to_place_the_photo_on_the_map" formatted="false">&quot;Waiting for a fresh location to place the photo on the map&quot;</string>
+    <string name="saving_photo" formatted="false">&quot;Saving photo…&quot;</string>
+    <string name="photo_capture_failed_try_again" formatted="false">&quot;Photo capture failed. Try again&quot;</string>
+    <string name="could_not_take_photo" formatted="false">&quot;Could not take photo: &quot;</string>
+    <string name="camera_permission_is_required_to_take_photos" formatted="false">&quot;Camera permission is required to take photos&quot;</string>
+    <string name="wait_for_the_photo_to_finish_saving" formatted="false">&quot;Wait for the photo to finish saving&quot;</string>
+    <string name="last_exit" formatted="false">&quot;Last exit: &quot;</string>
+    <string name="nandroid_reason" formatted="false">&quot;\nAndroid reason: &quot;</string>
+    <string name="no_crash_report_has_been_recorded_yet" formatted="false">&quot;No crash report has been recorded yet.&quot;</string>
+    <string name="app_not_responding_anr" formatted="false">&quot;app not responding (ANR)&quot;</string>
+    <string name="out_of_memory" formatted="false">&quot;out of memory&quot;</string>
+    <string name="java_crash" formatted="false">&quot;Java crash&quot;</string>
+    <string name="native_code_crash" formatted="false">&quot;native code crash&quot;</string>
+    <string name="stopped_during_app_update" formatted="false">&quot;stopped during app update&quot;</string>
+    <string name="stopped_by_user_or_update" formatted="false">&quot;stopped by user or update&quot;</string>
+    <string name="code" formatted="false">&quot;code &quot;</string>
+    <string name="copy" formatted="false">&quot;Copy&quot;</string>
+    <string name="close" formatted="false">&quot;Close&quot;</string>
+    <string name="could_not_check_gallery_publication" formatted="false">&quot;Could not check gallery publication&quot;</string>
+    <string name="permission_to_save_to_gallery_is_missing" formatted="false">&quot;Permission to save to gallery is missing&quot;</string>
+    <string name="original_photo_unavailable" formatted="false">&quot;Original photo unavailable&quot;</string>
+    <string name="could_not_save_export_state" formatted="false">&quot;Could not save export state&quot;</string>
+    <string name="could_not_prepare_to_save_again" formatted="false">&quot;Could not prepare to save again&quot;</string>
+    <string name="gallery_unavailable" formatted="false">&quot;Gallery unavailable&quot;</string>
+    <string name="could_not_create_pictures_mapnotes" formatted="false">&quot;Could not create Pictures/MapNotes&quot;</string>
+    <string name="gallery_did_not_create_an_entry" formatted="false">&quot;Gallery did not create an entry&quot;</string>
+    <string name="could_not_prepare_export" formatted="false">&quot;Could not prepare export&quot;</string>
+    <string name="gallery_did_not_open_the_file" formatted="false">&quot;Gallery did not open the file&quot;</string>
+    <string name="gallery_copy_size_does_not_match_the_original" formatted="false">&quot;Gallery copy size does not match the original&quot;</string>
+    <string name="gallery_did_not_publish_the_photo" formatted="false">&quot;Gallery did not publish the photo&quot;</string>
+    <string name="could_not_save_export_state_try_saving_again" formatted="false">&quot;Could not save export state; try saving again&quot;</string>
+    <string name="mock_gps_location" formatted="false">&quot;Mock GPS location&quot;</string>
+    <string name="invalid_coordinates" formatted="false">&quot;Invalid coordinates&quot;</string>
+    <string name="poor_gps_accuracy" formatted="false">&quot;Poor GPS accuracy&quot;</string>
+    <string name="stale_location" formatted="false">&quot;Stale location&quot;</string>
+    <string name="invalid_gps_time" formatted="false">&quot;Invalid GPS time&quot;</string>
+    <string name="gps_gap_waiting_for_the_next_location" formatted="false">&quot;GPS gap: waiting for the next location&quot;</string>
+    <string name="too_fast_gps_jump" formatted="false">&quot;Too fast / GPS jump&quot;</string>
+    <string name="waiting_for_current_location" formatted="false">&quot;Waiting for current location…&quot;</string>
+    <string name="unfinished_walk" formatted="false">&quot;Unfinished walk&quot;</string>
+    <string name="recording_was_interrupted_total_time_includes_the_break_the_route" formatted="false">&quot;Recording was interrupted. Total time includes the break; the route is not joined across it.&quot;</string>
+    <string name="resume" formatted="false">&quot;Resume&quot;</string>
+    <string name="finish_now" formatted="false">&quot;Finish now&quot;</string>
+    <string name="the_world_awaits_your_footsteps" formatted="false">&quot;The world awaits your footsteps&quot;</string>
+    <string name="got_it" formatted="false">&quot;Got it&quot;</string>
+    <string name="no_walks_yet_earlier_locations_and_photos_are_kept_separately_wit" formatted="false">&quot;No walks yet. Earlier locations and photos are kept separately without invented walks.&quot;</string>
+    <string name="unfinished" formatted="false">&quot; · unfinished&quot;</string>
+    <string name="km_total_time_h_min_s_nincludes_breaks_and_waiting_for_gps_photos" formatted="false">&quot;%.2f km · total time %d h %02d min %02d s\nIncludes breaks and waiting for GPS. Photos during this period: %d&quot;</string>
+    <string name="show_walk_location_on_map" formatted="false">&quot;Show walk location on map&quot;</string>
+    <string name="photo" formatted="false">&quot;Photo #&quot;</string>
+    <string name="back_to_map" formatted="false">&quot;Back to map&quot;</string>
+    <string name="could_not_start_gps" formatted="false">&quot;Could not start GPS: &quot;</string>
+    <string name="camera_and_location_access_are_required_for_geotagged_photos" formatted="false">&quot;Camera and location access are required for geotagged photos&quot;</string>
+    <string name="allow_precise_location_in_app_settings" formatted="false">&quot;Allow precise location in app settings&quot;</string>
+    <string name="precise_location_is_needed_to_reveal_small_areas_enable_it_in_app" formatted="false">&quot;Precise location is needed to reveal small areas. Enable it in app permissions.&quot;</string>
+    <string name="open_settings" formatted="false">&quot;Open settings&quot;</string>
+    <string name="later" formatted="false">&quot;Later&quot;</string>
+    <string name="download_paused" formatted="false">&quot;Download paused&quot;</string>
+    <string name="saved_offline_areas" formatted="false">&quot;Saved offline areas: &quot;</string>
+    <string name="km_walked_route_points" formatted="false">&quot;%.2f km walked · route points: %d&quot;</string>
+    <string name="finding_current_gps_location" formatted="false">&quot;Finding current GPS location…&quot;</string>
+    <string name="enable_gps_in_device_settings" formatted="false">&quot;Enable GPS in device settings&quot;</string>
+    <string name="could_not_get_gps_location" formatted="false">&quot;Could not get GPS location: &quot;</string>
+    <string name="approximate_location" formatted="false">&quot;Approximate location ±&quot;</string>
+    <string name="m_waiting_for_precise_gps_to_reveal_the_map" formatted="false">&quot; m · waiting for precise GPS to reveal the map&quot;</string>
+    <string name="you_are_here_gps" formatted="false">&quot;You are here · GPS ±&quot;</string>
+    <string name="m_reveal_up_to_100_m" formatted="false">&quot; m · reveal up to 100 m&quot;</string>
+    <string name="could_not_save_location" formatted="false">&quot;Could not save location&quot;</string>
+    <string name="download_map_to_phone" formatted="false">&quot;Download map to phone&quot;</string>
+    <string name="paste_a_direct_https_link_to_mbtiles_for_a_large_planet_file_use_" formatted="false">&quot;Paste a direct HTTPS link to MBTiles. For a large planet file, use a browser with resumable downloads, then “Connect a map file”. Copying from a link requires additional space.&quot;</string>
+    <string name="download" formatted="false">&quot;Download&quot;</string>
+    <string name="an_https_link_is_required" formatted="false">&quot;An HTTPS link is required&quot;</string>
+    <string name="http_error" formatted="false">&quot;HTTP error&quot;</string>
+    <string name="connected" formatted="false">&quot;Connected: &quot;</string>
+    <string name="no_photos_yet_tap_photo_on_the_map" formatted="false">&quot;No photos yet. Tap “＋ Photo” on the map&quot;</string>
+    <string name="photos" formatted="false">&quot;Photos · &quot;</string>
+    <string name="return_to_map" formatted="false">&quot;Return to map&quot;</string>
+    <string name="map_download_in_progress" formatted="false">&quot;Map download in progress&quot;</string>
+    <string name="continue_download" formatted="false">&quot;Continue download&quot;</string>
+    <string name="pause" formatted="false">&quot;Pause&quot;</string>
+    <string name="unfinished_download_saved" formatted="false">&quot;Unfinished download saved&quot;</string>
+    <string name="completed_sections_are_already_on_your_phone_resume_where_you_lef" formatted="false">&quot;Completed sections are already on your phone. Resume where you left off, even if you have moved.&quot;</string>
+    <string name="another_area" formatted="false">&quot;Another area&quot;</string>
+    <string name="what_would_you_like_to_save_offline" formatted="false">&quot;What would you like to save offline?&quot;</string>
+    <string name="atlas_streets_and_buildings_faster" formatted="false">&quot;Atlas: streets and buildings (faster)&quot;</string>
+    <string name="atlas_and_satellite_imagery" formatted="false">&quot;Atlas and satellite imagery&quot;</string>
+    <string name="wait_for_a_gps_location_or_zoom_in_on_the_area_you_want" formatted="false">&quot;Wait for a GPS location or zoom in on the area you want&quot;</string>
+    <string name="text_1_1_km" formatted="false">&quot;1 × 1 km&quot;</string>
+    <string name="text_4_4_km" formatted="false">&quot;4 × 4 km&quot;</string>
+    <string name="text_20_20_km" formatted="false">&quot;20 × 20 km&quot;</string>
+    <string name="text_50_50_km" formatted="false">&quot;50 × 50 km&quot;</string>
+    <string name="text_100_100_km_for_long_walks" formatted="false">&quot;100 × 100 km — for long walks&quot;</string>
+    <string name="area_around_map_centre" formatted="false">&quot;Area around map centre&quot;</string>
+    <string name="save_atlas_and_satellite_imagery_estimated_total_about" formatted="false">&quot;Save atlas and satellite imagery. Estimated total: about &quot;</string>
+    <string name="mb" formatted="false">&quot; MB.&quot;</string>
+    <string name="save_streets_buildings_and_water_satellite_imagery_is_excluded_si" formatted="false">&quot;Save streets, buildings and water. Satellite imagery is excluded; size depends on map density.&quot;</string>
+    <string name="a_large_area_may_take_several_hours_try_1_4_km_first_downloads_ca" formatted="false">&quot; A large area may take several hours. Try 1–4 km first. Downloads can be paused and resumed from completed sections. Public servers may be unavailable.&quot;</string>
+    <string name="start_download" formatted="false">&quot;Start download&quot;</string>
+    <string name="starting_download" formatted="false">&quot;Starting download…&quot;</string>
+    <string name="offline_map_downloads" formatted="false">&quot;Offline map downloads&quot;</string>
+    <string name="mapnotes_offline_map" formatted="false">&quot;MapNotes · offline map&quot;</string>
+    <string name="download_cancelled" formatted="false">&quot;Download cancelled&quot;</string>
+    <string name="network_paused_tap_network_on_the_map" formatted="false">&quot;Network paused · tap ▶ Network on the map&quot;</string>
+    <string name="resuming_download_of_saved_area" formatted="false">&quot;Resuming download of saved area…&quot;</string>
+    <string name="map_server_http" formatted="false">&quot;Map server: HTTP &quot;</string>
+    <string name="server_interrupted_map_transfer" formatted="false">&quot;Server interrupted map transfer&quot;</string>
+    <string name="server_returned_incomplete_map_data" formatted="false">&quot;Server returned incomplete map data&quot;</string>
+    <string name="could_not_save_map" formatted="false">&quot;Could not save map&quot;</string>
+    <string name="low_storage_free_some_space_and_resume_the_download" formatted="false">&quot;Low storage. Free some space and resume the download&quot;</string>
+    <string name="satellite_server_returned_an_invalid_image" formatted="false">&quot;Satellite server returned an invalid image&quot;</string>
+    <string name="area" formatted="false">&quot;Area &quot;</string>
+    <string name="km_downloaded" formatted="false">&quot; km downloaded: &quot;</string>
+    <string name="map_and_satellite_imagery_offline" formatted="false">&quot;map and satellite imagery offline&quot;</string>
+    <string name="atlas_offline_without_satellite_imagery" formatted="false">&quot;atlas offline (without satellite imagery)&quot;</string>
+    <string name="download_paused_tap_resume" formatted="false">&quot;Download paused. Tap “Resume”&quot;</string>
+    <string name="download_stopped" formatted="false">&quot;Download stopped: &quot;</string>
+    <string name="connecting_local_map" formatted="false">&quot;Connecting local map…&quot;</string>
+    <string name="vector" formatted="false">&quot; · vector&quot;</string>
+    <string name="raster" formatted="false">&quot; · raster&quot;</string>
+    <string name="zoom_levels" formatted="false">&quot; · zoom levels &quot;</string>
+    <string name="unsupported_map" formatted="false">&quot;Unsupported map&quot;</string>
+    <string name="could_not_connect_directly" formatted="false">&quot;Could not connect directly&quot;</string>
+    <string name="n_nchoose_mbtiles_from_your_local_downloads_folder_if_the_file_pr" formatted="false">&quot;\n\nChoose MBTiles from your local Downloads folder. If the file provider does not support direct reading, copy the map into the app. This needs additional space equal to the file size.&quot;</string>
+    <string name="copy_2" formatted="false">&quot;Copy&quot;</string>
+    <string name="copying_map" formatted="false">&quot;Copying map&quot;</string>
+    <string name="preparing" formatted="false">&quot;Preparing…&quot;</string>
+    <string name="could_not_open_file" formatted="false">&quot;Could not open file&quot;</string>
+    <string name="copy_cancelled" formatted="false">&quot;Copy cancelled&quot;</string>
+    <string name="not_enough_free_space_for_a_copy" formatted="false">&quot;Not enough free space for a copy&quot;</string>
+    <string name="copied_gb" formatted="false">&quot;Copied %.2f GB&quot;</string>
+    <string name="map_not_connected" formatted="false">&quot;Map not connected&quot;</string>
+    <string name="detailed_world_map" formatted="false">&quot;Detailed world map&quot;</string>
+    <string name="vector_mbtiles_using_openmaptiles_or_protomaps_and_raster_mbtiles" formatted="false">&quot;Vector MBTiles using OpenMapTiles or Protomaps and raster MBTiles are supported.\n\nA planet file requires substantial storage: the current Quarry build is about 85 GB. Download MBTiles using a browser with resumable downloads, save it locally, then choose “Connect a map file”. PMTiles, .map and raw .osm.pbf files are not supported yet. Satellite imagery is not included in vector files.&quot;</string>
+    <string name="map_catalogue" formatted="false">&quot;Map catalogue&quot;</string>
+    <string name="connect_file" formatted="false">&quot;Connect file&quot;</string>
+    <string name="map_loading_paused" formatted="false">&quot;Map loading paused&quot;</string>
+    <string name="section_too_large" formatted="false">&quot;Section too large&quot;</string>
+    <string name="server_busy_waiting_30_seconds" formatted="false">&quot;Server busy, waiting 30 seconds&quot;</string>
+    <string name="map_section" formatted="false">&quot;Map: section &quot;</string>
+    <string name="saved" formatted="false">&quot; · saved &quot;</string>
+    <string name="satellite" formatted="false">&quot;Satellite: &quot;</string>
+    <string name="area_2" formatted="false">&quot; · area &quot;</string>
+    <string name="km" formatted="false">&quot; km&quot;</string>
+    <string name="waiting_for_connection_automatic_retry" formatted="false">&quot;Waiting for connection · automatic retry &quot;</string>
+    <string name="network_error" formatted="false">&quot;network error&quot;</string>
+    <string name="map_too_dense_completed_sections_are_saved_try_again_later" formatted="false">&quot;Map too dense. Completed sections are saved; try again later&quot;</string>
+    <string name="could_not_save" formatted="false">&quot;Could not save &quot;</string>
+    <string name="atlas_online_loading_paused" formatted="false">&quot;Atlas · online loading paused&quot;</string>
+    <string name="atlas_waiting_for_location" formatted="false">&quot;Atlas · waiting for location&quot;</string>
+    <string name="atlas_loading_streets_and_buildings" formatted="false">&quot;Atlas · loading streets and buildings&quot;</string>
+    <string name="atlas_map_ready_view_up_to_100_m" formatted="false">&quot;Atlas · map ready · view up to 100 m&quot;</string>
+    <string name="atlas_no_detailed_map_download_this_area" formatted="false">&quot;Atlas · no detailed map: download this area&quot;</string>
+    <string name="satellite_waiting_for_location" formatted="false">&quot;Satellite: waiting for location&quot;</string>
+    <string name="revealing_the_map_requires_precise_gps_within_30_m" formatted="false">&quot;Revealing the map requires precise GPS (within ±30 m)&quot;</string>
+    <string name="satellite_revealed_100_m" formatted="false">&quot;Satellite revealed · 100 m · &quot;</string>
+    <string name="loading_walls" formatted="false">&quot;loading walls&quot;</string>
+    <string name="no_wall_outlines_download_this_area" formatted="false">&quot;no wall outlines: download this area&quot;</string>
+    <string name="satellite_revealed_visibility_up_to_100_m" formatted="false">&quot;Satellite revealed · visibility up to 100 m&quot;</string>
+    <string name="gps_inside_a_building_outside_visibility_unknown" formatted="false">&quot;GPS inside a building: outside visibility unknown&quot;</string>
+    <string name="satellite_revealed_view_up_to_100_m_limited_by_walls" formatted="false">&quot;Satellite revealed · view up to 100 m, limited by walls&quot;</string>
+    <string name="no_offline_imagery_download_this_area_while_online" formatted="false">&quot;No offline imagery: download this area while online&quot;</string>
+    <string name="image_not_loaded" formatted="false">&quot;Image not loaded: &quot;</string>
+    <string name="retry_in_10_s" formatted="false">&quot; · retry in 10 s&quot;</string>
+    <string name="satellite_loading_image" formatted="false">&quot;Satellite: loading image…&quot;</string>
+    <string name="offline_z" formatted="false">&quot; · offline · z&quot;</string>
+    <string name="map_could_not_be_opened" formatted="false">&quot;Map could not be opened: &quot;</string>
+    <string name="you_are_here" formatted="false">&quot;You are here&quot;</string>
+    <string name="streets_and_buildings_not_loaded_retry_in_15_s" formatted="false">&quot;Streets and buildings not loaded · retry in 15 s&quot;</string>
+    <string name="photos_2" formatted="false">&quot;Photos &quot;</string>
+    <string name="zoom_in_or_open_the_gallery" formatted="false">&quot; · zoom in or open the gallery&quot;</string>
+    <string name="photo_2" formatted="false">&quot;PHOTO&quot;</string>
+    <string name="km_2" formatted="false">&quot;%.0f km&quot;</string>
+    <string name="m_2" formatted="false">&quot;%.0f m&quot;</string>
+    <string name="tile_too_large" formatted="false">&quot;Tile too large&quot;</string>
+    <string name="server_did_not_return_an_image" formatted="false">&quot;Server did not return an image&quot;</string>
+    <string name="could_not_save_image" formatted="false">&quot;Could not save image&quot;</string>
+    <string name="no_saved_image" formatted="false">&quot;no saved image&quot;</string>
+    <string name="server_not_responding" formatted="false">&quot;server not responding&quot;</string>
+    <string name="cannot_connect_to_server" formatted="false">&quot;cannot connect to server&quot;</string>
+    <string name="truncated_vector_tile" formatted="false">&quot;Truncated vector tile&quot;</string>
+    <string name="mvt_number_too_long" formatted="false">&quot;MVT number too long&quot;</string>
+    <string name="invalid_mvt" formatted="false">&quot;Invalid MVT&quot;</string>
+    <string name="invalid_mvt_length" formatted="false">&quot;Invalid MVT length&quot;</string>
+    <string name="label_too_long" formatted="false">&quot;Label too long&quot;</string>
+    <string name="unknown_mvt_field" formatted="false">&quot;Unknown MVT field&quot;</string>
+    <string name="invalid_tile_size" formatted="false">&quot;Invalid tile size&quot;</string>
+    <string name="vector_tile_too_large" formatted="false">&quot;Vector tile too large&quot;</string>
+    <string name="too_many_layers" formatted="false">&quot;Too many layers&quot;</string>
+    <string name="mbtiles_with_mvt_pbf_is_required_rather_than_raw_osm_pbf" formatted="false">&quot;MBTiles with MVT/PBF is required, rather than raw OSM PBF&quot;</string>
+    <string name="too_many_features" formatted="false">&quot;Too many features&quot;</string>
+    <string name="unsupported_mvt_version" formatted="false">&quot;Unsupported MVT version&quot;</string>
+    <string name="too_many_attributes" formatted="false">&quot;Too many attributes&quot;</string>
+    <string name="invalid_attributes" formatted="false">&quot;Invalid attributes&quot;</string>
+    <string name="invalid_dictionary" formatted="false">&quot;Invalid dictionary&quot;</string>
+    <string name="invalid_geometry_commands" formatted="false">&quot;Invalid geometry commands&quot;</string>
+    <string name="invalid_polygon_closure" formatted="false">&quot;Invalid polygon closure&quot;</string>
+    <string name="unknown_geometry" formatted="false">&quot;Unknown geometry&quot;</string>
+    <string name="geometry_too_complex" formatted="false">&quot;Geometry too complex&quot;</string>
+    <string name="missing_line_start" formatted="false">&quot;Missing line start&quot;</string>
+    <string name="all_map_servers_are_unavailable" formatted="false">&quot;All map servers are unavailable: &quot;</string>
+    <string name="photo_3" formatted="false">&quot;← Photo · &quot;</string>
+    <string name="photo_file_unavailable" formatted="false">&quot;Photo file unavailable&quot;</string>
+    <string name="gps_m" formatted="false">&quot;%.6f, %.6f · GPS ±%.0f m&quot;</string>
+    <string name="show_photo_location_on_map" formatted="false">&quot;Show photo location on map&quot;</string>
+    <string name="photo_note" formatted="false">&quot;Photo note&quot;</string>
+    <string name="save_note" formatted="false">&quot;Save note&quot;</string>
+    <string name="note_saved" formatted="false">&quot;Note saved&quot;</string>
+    <string name="save_to_gallery" formatted="false">&quot;Save to gallery&quot;</string>
+    <string name="original_stays_in_mapnotes_a_copy_appears_in_the_gallery" formatted="false">&quot;Original stays in MapNotes · a copy appears in the gallery&quot;</string>
+    <string name="not_saved_storage_permission_denied_original_stays_in_mapnotes" formatted="false">&quot;Not saved: storage permission denied. Original stays in MapNotes.&quot;</string>
+    <string name="saving_to_gallery" formatted="false">&quot;Saving to gallery…&quot;</string>
+    <string name="already_saved_to_pictures_mapnotes_no_new_copy_created" formatted="false">&quot;Already saved to Pictures/MapNotes — no new copy created&quot;</string>
+    <string name="saved_to_gallery_pictures_mapnotes" formatted="false">&quot;Saved to gallery: Pictures/MapNotes&quot;</string>
+    <string name="not_saved" formatted="false">&quot;Not saved: &quot;</string>
+    <string name="gallery_error" formatted="false">&quot;gallery error&quot;</string>
+    <string name="original_stays_in_mapnotes" formatted="false">&quot;. Original stays in MapNotes.&quot;</string>
+    <string name="camera_returned_an_invalid_image" formatted="false">&quot;Camera returned an invalid image&quot;</string>
+    <string name="could_not_create_photo_folder" formatted="false">&quot;Could not create photo folder&quot;</string>
+    <string name="area_must_be_within_100_100_km_centred_between_84_s_and_84_n" formatted="false">&quot;Area must be within 100×100 km, centred between 84° S and 84° N&quot;</string>
+    <string name="move_the_centre_area_crosses_the_map_boundary" formatted="false">&quot;Move the centre: area crosses the map boundary&quot;</string>
+    <string name="too_many_tiles_move_the_centre_to_a_lower_latitude" formatted="false">&quot;Too many tiles: move the centre to a lower latitude&quot;</string>
+    <string name="walk_recording" formatted="false">&quot;Walk recording&quot;</string>
+    <string name="mapnotes_walk_in_progress" formatted="false">&quot;MapNotes · walk in progress&quot;</string>
+    <string name="gps_reveals_the_map_tap_stop_to_finish" formatted="false">&quot;Recording your journey. Tap “Stop” to finish.&quot;</string>
+    <string name="stop" formatted="false">&quot;Stop&quot;</string>
+    <string name="finding_precise_gps" formatted="false">&quot;Finding precise GPS…&quot;</string>
+    <string name="gps_unavailable_enable_location" formatted="false">&quot;GPS unavailable: enable location&quot;</string>
+    <string name="gps_accuracy_unavailable" formatted="false">&quot;GPS accuracy unavailable&quot;</string>
+    <string name="speed_too_high_for_a_walk" formatted="false">&quot;Speed too high for a walk&quot;</string>
+    <string name="place_revealed_accuracy" formatted="false">&quot;Place revealed · accuracy ±&quot;</string>
+    <string name="file_unavailable" formatted="false">&quot;File unavailable&quot;</string>
+    <string name="a_local_file_is_required_save_mbtiles_to_your_phone_s_downloads_f" formatted="false">&quot;A local file is required: save MBTiles to your phone’s Downloads folder&quot;</string>
+    <string name="a_ready_mbtiles_file_is_required_zip_pmtiles_and_raw_osm_pbf_are_" formatted="false">&quot;A ready .mbtiles file is required; ZIP, PMTiles and raw OSM PBF are unsupported&quot;</string>
+    <string name="map_file_truncated" formatted="false">&quot;Map file truncated&quot;</string>
+    <string name="local_world_map" formatted="false">&quot;Local world map&quot;</string>
+    <string name="file_contains_no_tiles" formatted="false">&quot;File contains no tiles&quot;</string>
+    <string name="mbtiles_has_no_tile_index_this_file_would_be_too_slow_on_a_phone" formatted="false">&quot;MBTiles has no tile index: this file would be too slow on a phone&quot;</string>
+    <string name="invalid_map_zoom_levels" formatted="false">&quot;Invalid map zoom levels&quot;</string>
+    <string name="empty_map" formatted="false">&quot;Empty map&quot;</string>
+    <string name="tile_missing" formatted="false">&quot;Tile missing&quot;</string>
+    <string name="tile_truncated" formatted="false">&quot;Tile truncated&quot;</string>
+    <string name="could_not_read_local_map" formatted="false">&quot;Could not read local map&quot;</string>
+    <string name="raster_image_too_large" formatted="false">&quot;Raster image too large&quot;</string>
+    <string name="invalid_raster_tile" formatted="false">&quot;Invalid raster tile&quot;</string>
+    <string name="start_a_walk_and_allow_precise_location_the_map_is_revealed_in_a_" formatted="false">&quot;Start a walk and allow precise location. The map is revealed in a continuous trail along your route, up to 100 m with walls taken into account. GPS accuracy is shown as a separate circle.\n\nRecording continues with the screen off until you tap “Stop”. Progress is stored only on your phone.\n\nWorld outlines are available offline. Save streets and satellite imagery with “Download offline area”. While the map is open, your location and colours update automatically. Walk recording keeps working with the screen off.&quot;</string>
+    <string name="gps_accuracy_within_30_m_speed_up_to_4_5_m_s_with_additional_accu" formatted="false">&quot;GPS: accuracy within 30 m; speed up to 4.5 m/s with additional accuracy checks. GPS jumps and mock locations do not reveal the map.\n\nOffline: connect vector MBTiles (OpenMapTiles/Protomaps MVT/PBF) or raster MBTiles. Detailed maps use the atlas style. The planet file stays on your phone; only needed sections are read. Raw OSM PBF and PMTiles are unsupported.\n\nStreets: © OpenStreetMap contributors, openstreetmap.org/copyright. Only visible sections are loaded. “Download offline area” saves streets and buildings via Overpass, with optional EOX satellite imagery.\n\nLocal MBTiles show vector streets, buildings, water and names in the atlas. Satellite imagery is a separate mode and is not included in vector files. Overview imagery is about 10 m/pixel, from 2016. EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016), CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ . OSM licence: https://www.openstreetmap.org/copyright . Download providers receive the selected area bounds. Walk coordinates stay local.&quot;</string>
+    <string name="map_section_progress">&quot;Map: section %1$d / %2$d · saved %3$d&quot;</string>
+    <string name="satellite_progress">&quot;Satellite: %1$d / %2$d · area %3$d×%3$d km&quot;</string>
+    <string name="retry_progress">&quot;Waiting for connection · automatic retry %1$d · %2$s&quot;</string>
+    <string name="download_complete">&quot;Area %1$d×%1$d km downloaded: %2$s&quot;</string>
+    <string name="walk_accuracy">&quot;Recording · GPS accuracy ±%1$d m&quot;</string>
+    <string name="zoom_in">&quot;Zoom in&quot;</string>
+    <string name="zoom_out">&quot;Zoom out&quot;</string>
+    <string name="my_location">&quot;My location&quot;</string>
+    <string name="map_options">&quot;Map options&quot;</string>
+    <string name="map_accessibility">&quot;Map. Drag to pan, pinch to zoom. Use My location to follow GPS.&quot;</string>
+    <string name="photo_accessibility">&quot;Photo. Pinch to zoom, double tap to fit.&quot;</string>
+    <string name="back_to_photos">&quot;Back to map&quot;</string>
     <string name="download_failure">Download stopped: %1$s</string>
     <string name="world_map_unavailable">World map unavailable</string>
     <string name="map_attribution">© OpenStreetMap · OpenMapTiles · Natural Earth · EOX</string>

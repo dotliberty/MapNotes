@@ -403,8 +403,10 @@ final class WorldMap implements AutoCloseable {
         HashSet<String> names = new HashSet<>();
         for (int x = left; x <= right; x++)
             for (int y = Math.max(0, top); y <= Math.min(n - 1, bottom); y++) {
-                float sx = (float) (x * size - wx + map.getWidth() / 2.0),
-                        sy = (float) (y * size - wy + map.getHeight() / 2.0);
+                double exactX = x * size - wx + map.getWidth() / 2.0;
+                double exactY = y * size - wy + map.getHeight() / 2.0;
+                float sx = (float) exactX, sy = (float) exactY;
+                float ex = (float) (exactX + size), ey = (float) (exactY + size);
                 int wrapped = Math.floorMod(x, n);
                 if (!vector) {
                     Bitmap b = image(z, wrapped, y);
@@ -415,11 +417,7 @@ final class WorldMap implements AutoCloseable {
                             grey.setSaturation(.15f);
                             paint.setColorFilter(new ColorMatrixColorFilter(grey));
                         }
-                        canvas.drawBitmap(
-                                b,
-                                null,
-                                new RectF(sx, sy, sx + (float) size, sy + (float) size),
-                                paint);
+                        canvas.drawBitmap(b, null, new RectF(sx, sy, ex, ey), paint);
                         paint.setColorFilter(null);
                     }
                     continue;
@@ -427,33 +425,38 @@ final class WorldMap implements AutoCloseable {
                 Mvt.Tile tile = tile(z, wrapped, y, false);
                 if (tile == null) continue;
                 int save = canvas.save();
-                canvas.clipRect(sx, sy, sx + (float) size, sy + (float) size);
+                canvas.clipRect(sx, sy, ex, ey);
                 paint.setStyle(Paint.Style.FILL);
                 paint.setColor(explored ? 0xffb8cb96 : 0xffc6c6b0);
-                canvas.drawRect(sx, sy, sx + (float) size, sy + (float) size, paint);
+                canvas.drawRect(sx, sy, ex, ey, paint);
                 for (int pass = 0; pass < 4; pass++)
                     for (Mvt.Feature f : tile.features) {
                         if (order(f.layer) != pass || f.type == 1) continue;
                         if (road(f.layer) && !MapDetail.roadVisible(f.kind, map.zoom)) continue;
                         if (isBuilding(f.layer) && map.zoom < 15) continue;
-                        float factor = (float) (size / f.extent);
+                        double exactFactor = size / f.extent;
+                        float factor = (float) exactFactor;
                         RectF bounds =
                                 new RectF(
-                                        sx + f.bounds.left * factor,
-                                        sy + f.bounds.top * factor,
-                                        sx + f.bounds.right * factor,
-                                        sy + f.bounds.bottom * factor);
+                                        (float) (exactX + f.bounds.left * exactFactor),
+                                        (float) (exactY + f.bounds.top * exactFactor),
+                                        (float) (exactX + f.bounds.right * exactFactor),
+                                        (float) (exactY + f.bounds.bottom * exactFactor));
                         if (bounds.right < 0
                                 || bounds.left > map.getWidth()
                                 || bounds.bottom < 0
                                 || bounds.top > map.getHeight()) continue;
                         int item = canvas.save();
-                        canvas.translate(sx, sy);
-                        canvas.scale(factor, factor);
+                        boolean local = Math.abs(exactX) > 8192 || Math.abs(exactY) > 8192;
+                        if (!local) {
+                            canvas.translate(sx, sy);
+                            canvas.scale(factor, factor);
+                        }
+                        float strokeFactor = local ? 1 : factor;
                         paint.setStrokeCap(Paint.Cap.ROUND);
                         paint.setStrokeJoin(Paint.Join.ROUND);
                         paint.setStyle(f.type == 3 ? Paint.Style.FILL : Paint.Style.STROKE);
-                        paint.setStrokeWidth(map.dp(1) / factor);
+                        paint.setStrokeWidth(map.dp(1) / strokeFactor);
                         if (pass == 0) paint.setColor(explored ? 0xffa6bf89 : 0xffbebfa8);
                         else if (pass == 1) paint.setColor(explored ? 0xff78aeb7 : 0xff9cabb1);
                         else if (pass == 2) paint.setColor(explored ? 0xffe5d8b6 : 0xffb9b7a2);
@@ -462,9 +465,20 @@ final class WorldMap implements AutoCloseable {
                             float width = map.dp(1) * MapDetail.roadWidth(map.zoom);
                             paint.setStyle(Paint.Style.STROKE);
                             paint.setColor(0xfff5e9c9);
-                            paint.setStrokeWidth(width / factor);
+                            paint.setStrokeWidth(width / strokeFactor);
                         }
-                        canvas.drawPath(f.path, paint);
+                        canvas.drawPath(
+                                local
+                                        ? WorldLand.projectParts(
+                                                f.parts,
+                                                exactX,
+                                                exactY,
+                                                exactFactor,
+                                                map.getWidth(),
+                                                map.getHeight(),
+                                                f.type == 3)
+                                        : f.path,
+                                paint);
                         canvas.restoreToCount(item);
                     }
                 canvas.restoreToCount(save);
@@ -487,8 +501,8 @@ final class WorldMap implements AutoCloseable {
                                             || f.layer.equals("housenumber");
                     if (!place && !(street && map.zoom >= 15) && !(poi && map.zoom >= 18)) continue;
                     float[] coordinates = f.parts.get(0);
-                    float px = sx + coordinates[0] * (float) size / f.extent,
-                            py = sy + coordinates[1] * (float) size / f.extent;
+                    float px = (float) (exactX + coordinates[0] * size / f.extent),
+                            py = (float) (exactY + coordinates[1] * size / f.extent);
                     if (px < 8
                             || py < map.dp(55)
                             || px > map.getWidth() - map.dp(35)

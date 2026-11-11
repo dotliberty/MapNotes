@@ -89,7 +89,10 @@ public class MapView extends View {
     volatile boolean online = true;
     boolean illustrated = true;
     private final Paint paint = new Paint(3);
-    private final ArrayList<Path> lands = new ArrayList<>();
+    private final ArrayList<WorldLand> lands = new ArrayList<>();
+    private final ArrayList<Path> landPaths = new ArrayList<>();
+    private double landX = Double.NaN, landY;
+    private int landZoom, landWidth, landHeight;
     private final android.util.LruCache<String, Bitmap> tiles =
             new android.util.LruCache<String, Bitmap>(CacheBudget.imagery()) {
                 protected int sizeOf(String k, Bitmap b) {
@@ -174,6 +177,7 @@ public class MapView extends View {
     }
 
     private final ExecutorService photoPool = Executors.newSingleThreadExecutor();
+    final CompactPhotoLayout compactPhotos = new CompactPhotoLayout();
     private ArrayList<PhotoGroups.Group> groupedPhotos;
     private double photoCx, photoCy;
     private int photoZoom, photoWidth, photoHeight;
@@ -181,6 +185,7 @@ public class MapView extends View {
 
     public void setPhotos(ArrayList<Store.Photo> value) {
         photos = new ArrayList<>(value);
+        compactPhotos.setPhotos(photos);
         groupedPhotos = null;
         invalidate();
     }
@@ -326,6 +331,9 @@ public class MapView extends View {
     private final ExecutorService mapWorker = Executors.newSingleThreadExecutor(),
             routeWorker = Executors.newSingleThreadExecutor();
     private boolean indexing, rendering, indexAgain;
+    long lastFrameNanos, lastBaseNanos, lastMaskNanos;
+    volatile long routeBuildNanos;
+    int routeFramesRequested, routeFramesCompleted, routeFramesCancelled;
     private long revision;
     private RouteFrame readyFrame;
     private final ArrayDeque<RouteFrame> frameHistory = new ArrayDeque<>();
@@ -367,7 +375,10 @@ public class MapView extends View {
                                                             revision++;
                                                             invalidate();
                                                         }
-                                                    }));
+                                                    }),
+                                    () -> {
+                                        if (!closed) postInvalidate();
+                                    });
                     ui.post(
                             () -> {
                                 if (closed || ticket != indexTicket) {
@@ -425,6 +436,7 @@ public class MapView extends View {
                 && Math.abs(readyFrame.cx - cx) * (1 << zoom) < getWidth() / 4.0
                 && Math.abs(readyFrame.cy - cy) * (1 << zoom) < getHeight() / 4.0) return;
         rendering = true;
+        routeFramesRequested++;
         double[] live =
                 current != null && currentCanReveal
                         ? new double[] {current.getLatitude(), current.getLongitude()}
@@ -450,14 +462,17 @@ public class MapView extends View {
                                         > frame.height / 2.0;
         routeWorker.execute(
                 () -> {
+                    long buildStarted = System.nanoTime();
                     try {
                         frame.build();
                     } finally {
+                        routeBuildNanos += System.nanoTime() - buildStarted;
                         ui.post(
                                 () -> {
                                     rendering = false;
                                     if (!closed) {
                                         if (frame.complete && !frame.cancelled.getAsBoolean()) {
+                                            routeFramesCompleted++;
                                             readyFrame = frame;
                                             frameHistory.removeIf(
                                                     old ->
@@ -475,6 +490,8 @@ public class MapView extends View {
                                             frameHistory.addLast(frame);
                                             while (frameHistory.size() > 6)
                                                 frameHistory.removeFirst();
+                                        } else {
+                                            routeFramesCancelled++;
                                         }
                                         invalidate();
                                     }
@@ -754,19 +771,8 @@ public class MapView extends View {
     }
 
     void polygon(JSONArray rings) throws Exception {
-        Path p = new Path();
-        p.setFillType(Path.FillType.EVEN_ODD);
-        for (int j = 0; j < rings.length(); j++) {
-            JSONArray ring = rings.getJSONArray(j);
-            for (int k = 0; k < ring.length(); k++) {
-                JSONArray v = ring.getJSONArray(k);
-                float x = (float) x(v.getDouble(0)), y = (float) y(v.getDouble(1));
-                if (k == 0) p.moveTo(x, y);
-                else p.lineTo(x, y);
-            }
-            p.close();
-        }
-        lands.add(p);
+        lands.add(new WorldLand(rings));
+        landX = Double.NaN;
     }
 
     static double x(double lon) {
@@ -1062,15 +1068,20 @@ public class MapView extends View {
     }
 
     protected void onDraw(Canvas c) {
+        long frameStarted = System.nanoTime();
         super.onDraw(c);
         int viewportSave = c.save();
         if (viewportFraction != 1)
             c.scale(viewportFraction, viewportFraction, getWidth() / 2f, getHeight() / 2f);
+        long baseStarted = System.nanoTime();
         drawMap(c, false);
+        lastBaseNanos = System.nanoTime() - baseStarted;
+        long maskStarted = System.nanoTime();
         if (asyncRendering) {
             requestFrame();
             drawFrameMask(c);
         }
+        lastMaskNanos = System.nanoTime() - maskStarted;
         Path reveal = asyncRendering ? new Path() : routeReveal();
         if (!asyncRendering && current != null && currentCanReveal)
             addVisibility(reveal, current.getLatitude(), current.getLongitude());
@@ -1105,6 +1116,7 @@ public class MapView extends View {
                 dp(8),
                 getHeight() - dp(9),
                 paint);
+        lastFrameNanos = System.nanoTime() - frameStarted;
     }
 
     static boolean connects(double[] a, double[] b) {
@@ -1296,17 +1308,30 @@ public class MapView extends View {
     }
 
     void drawOutlines(Canvas c) {
-        double s = 1 << zoom;
-        int save = c.save();
-        c.translate((float) (getWidth() / 2.0 - cx * s), (float) (getHeight() / 2.0 - cy * s));
-        c.scale((float) s, (float) s);
         paint.setColorFilter(null);
         paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth((float) (1.6 / s));
+        paint.setStrokeWidth(1.6f);
         paint.setColor(0xffa0ada5);
-        for (Path path : lands) c.drawPath(path, paint);
+        for (Path path : projectedLands()) c.drawPath(path, paint);
         paint.setStyle(Paint.Style.FILL);
-        c.restoreToCount(save);
+    }
+
+    private List<Path> projectedLands() {
+        if (landX != cx
+                || landY != cy
+                || landZoom != zoom
+                || landWidth != getWidth()
+                || landHeight != getHeight()) {
+            landPaths.clear();
+            for (WorldLand land : lands)
+                landPaths.add(land.project(cx, cy, zoom, getWidth(), getHeight()));
+            landX = cx;
+            landY = cy;
+            landZoom = zoom;
+            landWidth = getWidth();
+            landHeight = getHeight();
+        }
+        return landPaths;
     }
 
     void drawMap(Canvas c, boolean color) {
@@ -1317,17 +1342,12 @@ public class MapView extends View {
             return;
         }
         c.drawColor(illustrated ? (color ? 0xff78aeb7 : 0xff9cabb1) : 0xff343e42);
-        double s = 1 << zoom;
-        int sv = c.save();
-        c.translate((float) (getWidth() / 2.0 - cx * s), (float) (getHeight() / 2.0 - cy * s));
-        c.scale((float) s, (float) s);
         paint.setColorFilter(null);
-        for (Path p : lands) {
+        for (Path p : projectedLands()) {
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(illustrated ? (color ? 0xffb8cb96 : 0xffc6c6b0) : 0xff66706f);
             c.drawPath(p, paint);
         }
-        c.restoreToCount(sv);
         if (world != null) world.draw(c, this, illustrated && color);
         else if (zoom >= 7 && !illustrated) drawTiles(c, false);
         if (atlas != null && world == null) atlas.draw(c, this, illustrated && color);
@@ -1414,35 +1434,68 @@ public class MapView extends View {
 
     boolean tapPhotos(float x, float y) {
         if (photoTap == null) return false;
-        ArrayList<PhotoGroups.Group> visible = animatedPhotos();
-        ArrayList<Store.Photo> atAnchor = new ArrayList<>();
-        for (PhotoGroups.Group g : visible)
-            if (!g.exiting
-                    && g.opacity > .15f
-                    && Math.abs(x - g.anchorX) <= dp(10)
-                    && Math.abs(y - g.anchorY) <= dp(10)) atAnchor.addAll(g.photos);
-        if (atAnchor.size() > 1) {
-            photoTap.open(atAnchor);
-            return true;
-        }
+        ArrayList<PhotoGroups.Group> visible = compactPhotos.groups(this);
         for (int i = visible.size() - 1; i >= 0; i--) {
             PhotoGroups.Group group = visible.get(i);
-            if (!group.exiting
-                    && group.opacity > .15f
-                    && Math.abs(x - group.x) <= dp(21) * group.sizeScale
-                    && Math.abs(y - group.y) <= dp(21) * group.sizeScale) {
+            if (Math.abs(x - group.x) <= dp(18) && Math.abs(y - group.y) <= dp(18)) {
                 photoTap.open(new ArrayList<>(group.photos));
                 return true;
             }
         }
+
         return false;
+    }
+
+    static RectF photoRect(float x, float y, Bitmap bitmap, float maxSide) {
+        float width = maxSide, height = maxSide;
+        if (bitmap != null) {
+            float ratio = (float) bitmap.getWidth() / bitmap.getHeight();
+            if (ratio >= 1) height /= ratio;
+            else width *= ratio;
+        }
+        return new RectF(x - width / 2, y - height / 2, x + width / 2, y + height / 2);
+    }
+
+    Bitmap photoThumbnail(Store.Photo photo) {
+        String key = "photo/" + photo.id;
+        Bitmap bitmap = tiles.get(key);
+        if (bitmap != null) return bitmap;
+        Long retry = satelliteRetryAt.get(key);
+        if (retry != null && android.os.SystemClock.uptimeMillis() >= retry) {
+            failed.remove(key);
+            satelliteRetryAt.remove(key);
+        }
+        if (!closed && !failed.contains(key) && pending.add(key) && !photoPool.isShutdown()) {
+            photoPool.execute(
+                    () -> {
+                        try {
+                            Bitmap loaded = PhotoFiles.load(photo.path, 64);
+                            if (!closed && loaded != null) tiles.put(key, loaded);
+                            else if (!closed) failed.add(key);
+                        } catch (Exception error) {
+                            if (!closed) failed.add(key);
+                        } finally {
+                            if (!closed && failed.contains(key)) {
+                                satelliteRetryAt.put(
+                                        key, android.os.SystemClock.uptimeMillis() + 10000);
+                                postInvalidateDelayed(10000);
+                            }
+                            pending.remove(key);
+                            if (!closed) postInvalidate();
+                        }
+                    });
+        }
+        return null;
     }
 
     void drawPhotos(Canvas canvas) {
         paint.setColorFilter(null);
         paint.setStyle(Paint.Style.FILL);
         paint.setAlpha(255);
-        if (photoGroups().size() < visiblePhotoCount) {
+        ArrayList<PhotoGroups.Group> groups = compactPhotos.groups(this);
+        int represented = 0;
+        for (PhotoGroups.Group group : groups) represented += group.photos.size();
+        if (represented < compactPhotos.visibleCount) {
             paint.setColor(0xee183d3a);
             canvas.drawRoundRect(dp(8), dp(6), getWidth() - dp(8), dp(36), dp(8), dp(8), paint);
             paint.setColor(0xffffe4a7);
@@ -1450,9 +1503,9 @@ public class MapView extends View {
             canvas.drawText(
                     fitLabel(
                             Language.text(getContext(), R.string.photos_2)
-                                    + photoGroups().size()
+                                    + represented
                                     + " / "
-                                    + visiblePhotoCount
+                                    + compactPhotos.visibleCount
                                     + Language.text(
                                             getContext(), R.string.zoom_in_or_open_the_gallery),
                             getWidth() - dp(32)),
@@ -1460,100 +1513,31 @@ public class MapView extends View {
                     dp(26),
                     paint);
         }
-        ArrayList<PhotoGroups.Group> visibleCards = animatedPhotos();
-        for (PhotoGroups.Group group : visibleCards)
-            if (Math.abs(group.x - group.anchorX) > .5f
-                    || Math.abs(group.y - group.anchorY) > .5f) {
-                paint.setColor(0xffd7b676);
-                paint.setStrokeWidth(dp(1));
-                paint.setStyle(Paint.Style.STROKE);
-                Path leader = new Path();
-                leader.moveTo(group.anchorX, group.anchorY);
-                leader.cubicTo(
-                        group.anchorX,
-                        (group.anchorY + group.y) / 2,
-                        group.x,
-                        (group.anchorY + group.y) / 2,
-                        group.x,
-                        group.y);
-                canvas.drawPath(leader, paint);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setColor(0xffffe4a7);
-                canvas.drawCircle(group.anchorX, group.anchorY, dp(2), paint);
-            }
-        for (PhotoGroups.Group group : visibleCards) {
-            float xx = group.x, yy = group.y;
-            if (xx < -dp(30)
-                    || xx > getWidth() + dp(30)
-                    || yy < -dp(30)
-                    || yy > getHeight() + dp(30)) continue;
-            int cardSave =
-                    canvas.saveLayerAlpha(
-                            xx - dp(32),
-                            yy - dp(32),
-                            xx + dp(32),
-                            yy + dp(32),
-                            Math.round(255 * group.opacity));
-            canvas.scale(group.sizeScale, group.sizeScale, xx, yy);
+        for (PhotoGroups.Group group : groups) {
             Store.Photo photo = group.photos.get(0);
-            RectF outer = new RectF(xx - dp(21), yy - dp(21), xx + dp(21), yy + dp(21)),
-                    inner = new RectF(xx - dp(18), yy - dp(18), xx + dp(18), yy + dp(18));
+            Bitmap bitmap = photoThumbnail(photo);
+            RectF inner = photoRect(group.x, group.y, bitmap, dp(24));
+            RectF outer = new RectF(inner);
+            outer.inset(-dp(2), -dp(2));
             paint.setColor(0xffead4a1);
-            canvas.drawRoundRect(outer, dp(5), dp(5), paint);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(dp(1));
-            paint.setColor(0xff997947);
-            canvas.drawRoundRect(outer, dp(5), dp(5), paint);
-            paint.setStyle(Paint.Style.FILL);
-            AtlasDecor.star(canvas, xx, yy + dp(21), dp(4));
-            String key = "photo/" + photo.id;
-            Bitmap thumbnail = tiles.get(key);
-            if (thumbnail != null) canvas.drawBitmap(thumbnail, null, inner, paint);
+            canvas.drawRoundRect(outer, dp(3), dp(3), paint);
+            if (bitmap != null) canvas.drawBitmap(bitmap, null, inner, paint);
             else {
                 paint.setColor(0xff254a3b);
                 canvas.drawRect(inner, paint);
-                paint.setColor(Color.WHITE);
-                paint.setTextSize(dp(10));
-                canvas.drawText(
-                        Language.text(getContext(), R.string.photo_2),
-                        xx - dp(15),
-                        yy + dp(4),
-                        paint);
-                Long retry = satelliteRetryAt.get(key);
-                if (retry != null && android.os.SystemClock.uptimeMillis() >= retry) {
-                    failed.remove(key);
-                    satelliteRetryAt.remove(key);
-                }
-                if (!failed.contains(key) && pending.add(key) && !photoPool.isShutdown())
-                    photoPool.execute(
-                            () -> {
-                                try {
-                                    Bitmap b = PhotoFiles.load(photo.path, 96);
-                                    if (b != null) tiles.put(key, b);
-                                    else failed.add(key);
-                                } catch (Exception e) {
-                                    failed.add(key);
-                                } finally {
-                                    if (failed.contains(key)) {
-                                        satelliteRetryAt.put(
-                                                key, android.os.SystemClock.uptimeMillis() + 10000);
-                                        postInvalidateDelayed(10000);
-                                    }
-                                    pending.remove(key);
-                                    postInvalidate();
-                                }
-                            });
             }
             if (group.photos.size() > 1) {
                 paint.setColor(0xff182f2c);
-                canvas.drawRoundRect(
-                        xx - dp(20), yy + dp(3), xx + dp(20), yy + dp(20), dp(3), dp(3), paint);
+                canvas.drawCircle(inner.right, inner.bottom, dp(8), paint);
                 paint.setColor(0xffffe0a0);
-                paint.setTextSize(dp(11));
+                paint.setTextSize(dp(9));
                 String count = "" + group.photos.size();
-                canvas.drawText(count, xx - paint.measureText(count) / 2, yy + dp(16), paint);
+                canvas.drawText(
+                        count,
+                        inner.right - paint.measureText(count) / 2,
+                        inner.bottom + dp(3),
+                        paint);
             }
-            canvas.restoreToCount(cardSave);
         }
     }
 
@@ -1627,11 +1611,21 @@ public class MapView extends View {
         return null;
     }
 
-    void drawScale(Canvas canvas) {
-        double mpp = 156543.03392 * Math.cos(Math.toRadians(centerLatitude())) / (1 << zoom),
-                target = mpp * dp(85),
+    double metersPerScreenPixel() {
+        return 156543.03392
+                * Math.cos(Math.toRadians(centerLatitude()))
+                / ((1 << zoom) * (double) viewportFraction);
+    }
+
+    double scaleDistance() {
+        double target = metersPerScreenPixel() * dp(85),
                 unit = Math.pow(10, Math.floor(Math.log10(target))),
                 distance = target / unit >= 5 ? unit * 5 : target / unit >= 2 ? unit * 2 : unit;
+        return distance;
+    }
+
+    void drawScale(Canvas canvas) {
+        double mpp = metersPerScreenPixel(), distance = scaleDistance();
         float width = (float) (distance / mpp), left = dp(12), bottom = getHeight() - dp(49);
         paint.setColorFilter(null);
         paint.setStyle(Paint.Style.STROKE);

@@ -18,9 +18,18 @@ From the repository root:
 python tools/build.py
 ```
 
-This invokes the common Gradle Java/Kotlin build, resolves pinned Android dependencies, packages all required dex/resources and aligns the unsigned APK. The result follows the manifest version, currently `build/MapNotes-1.3.0-unsigned.apk`. **Unsigned APKs are not installable.** No dependency binaries, generated manifests or local signing material are source files.
+This invokes the common Gradle Java/Kotlin build, resolves pinned Android dependencies, packages all required dex/resources and aligns the unsigned APK. The result follows the manifest version, currently `build/MapNotes-1.3.2-unsigned.apk`. **Unsigned APKs are not installable.** No dependency binaries, generated manifests or local signing material are source files.
 
-For the separate installable debug app, use `python tools/build.py --debug`, followed by `python tools/verify_debug_apk.py build/MapNotes-1.3.0-debug.apk`. The persistent user-local debug keystore must already exist; this workflow will not generate it. Gradle signing is disabled; the helper validates the existing key, then aligns/signs/verifies through the Android SDK tools.
+For the separate installable debug app, use `python tools/build.py --debug`, followed by `python tools/verify_debug_apk.py build/MapNotes-1.3.2-debug.apk`. The persistent user-local debug keystore must already exist; this workflow will not generate it. Gradle signing is disabled; the helper validates the existing key, then aligns/signs/verifies through the Android SDK tools.
+
+For performance comparisons without ART debugging mode, use
+`python tools/build.py --non-debug-test`. This builds the `benchmark` variant with
+`debuggable=false` and minification disabled, retaining the `.debug` application ID
+and the same existing local signing identity so it can update the test app rather
+than replace the official app. Verify the resulting `MapNotes-<version>-nondebug-test.apk`
+with `tools/verify_debug_apk.py <apk> --non-debuggable`. The signing identity and
+package suffix do not make the APK debuggable. Run its JVM tests with
+`python tools/test.py --variant benchmark`; this is not a physical-device FPS test.
 
 To sign a local build, provide an existing keystore that you own outside the checkout and securely set the `MAPNOTES_STORE_PASSWORD` environment variable. Do not paste passwords into shell history, issue reports or commits. The script passes the password to apksigner by environment reference, not as a command-line value:
 

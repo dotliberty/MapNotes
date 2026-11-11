@@ -26,6 +26,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("apk", type=Path)
     parser.add_argument("--outbox", type=Path)
+    parser.add_argument("--non-debuggable", action="store_true")
     args = parser.parse_args()
     apk = args.apk.resolve()
     sdk = Path(os.environ["ANDROID_HOME"]) / "build-tools/36.0.0"
@@ -45,8 +46,10 @@ def main():
     version, code = expected_version(ROOT / "AndroidManifest.xml")
     assert f"versionName='{version}'" in badging and f"versionCode='{code}'" in badging
     assert "launchable-activity: name='ru.main.explorer.MainActivity'" in badging
-    assert "targetSdkVersion:'35'" in badging and "application-debuggable" in badging
-    assert "application-label:'MapNotes beta DEBUG'" in badging
+    assert "targetSdkVersion:'35'" in badging
+    assert ("application-debuggable" in badging) == (not args.non_debuggable)
+    label = "MapNotes beta TEST" if args.non_debuggable else "MapNotes beta DEBUG"
+    assert f"application-label:'{label}'" in badging
     certificate = run(
         [
             java,
@@ -96,6 +99,7 @@ def main():
         version=version,
         versionCode=code,
         targetSdk=35,
+        debuggable=not args.non_debuggable,
         signature="verified persistent local debug",
         zipalign="passed",
         zipCRC="passed",

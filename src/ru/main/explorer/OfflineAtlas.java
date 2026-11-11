@@ -11,12 +11,31 @@ public class OfflineAtlas {
     static final class IndexedWays extends ArrayList<Way> {
         final HashMap<Long, ArrayList<Way>> grid = new HashMap<>();
         final ArrayList<Way> large = new ArrayList<>();
+        AtlasGeometry renderGeometry;
+        List<AtlasTiles.Feature> tileFeatures;
+        AtlasFeatureIndex tileIndex, labelIndex;
+        final long tileIdentity = TILE_IDENTITIES.incrementAndGet();
+        int estimatedBytes;
 
         static long key(int x, int y) {
             return ((long) x << 32) ^ (y & 0xffffffffL);
         }
 
         void index() {
+            renderGeometry = new AtlasGeometry(this);
+            ArrayList<AtlasGeometry.Entry> ordered =
+                    new ArrayList<>(Arrays.asList(renderGeometry.entries));
+            ordered.sort(
+                    Comparator.comparingInt((AtlasGeometry.Entry e) -> e.pass)
+                            .thenComparingInt(e -> e.ordinal));
+            ArrayList<AtlasTiles.Feature> frozen = new ArrayList<>();
+            for (AtlasGeometry.Entry entry : ordered) frozen.add(new AtlasTiles.Feature(entry));
+            tileFeatures = Collections.unmodifiableList(frozen);
+            tileIndex = new AtlasFeatureIndex(tileFeatures);
+            ArrayList<AtlasTiles.Feature> labels = new ArrayList<>();
+            for (AtlasTiles.Feature feature : frozen)
+                if (feature.pass == 2 && !feature.name.isEmpty()) labels.add(feature);
+            labelIndex = new AtlasFeatureIndex(labels, true);
             for (Way w : this) {
                 if (!w.area || !"building".equals(w.type)) continue;
                 int x0 = (int) Math.floor(w.west * 500),
@@ -31,6 +50,14 @@ public class OfflineAtlas {
                     for (int y = y0; y <= y1; y++)
                         grid.computeIfAbsent(key(x, y), k -> new ArrayList<>()).add(w);
             }
+            long size =
+                    renderGeometry.bytes
+                            + 16L * large.size()
+                            + 128L * frozen.size()
+                            + tileIndex.bytes
+                            + labelIndex.bytes;
+            for (ArrayList<Way> bucket : grid.values()) size += 112L + bucket.size() * 16L;
+            estimatedBytes = (int) Math.min(Integer.MAX_VALUE, size);
         }
 
         Collection<Way> near(double south, double west, double north, double east) {
@@ -53,6 +80,13 @@ public class OfflineAtlas {
         double south = 90, west = 180, north = -90, east = -180;
     }
 
+    private static final java.util.concurrent.atomic.AtomicLong TILE_IDENTITIES =
+            new java.util.concurrent.atomic.AtomicLong();
+    private static final AtlasFeatureIndex EMPTY_FEATURES =
+            new AtlasFeatureIndex(Collections.emptyList());
+    private static final AtlasFeatureIndex EMPTY_LABELS =
+            new AtlasFeatureIndex(Collections.emptyList(), true);
+
     static class Area {
         boolean buildingsOnly, overview, legacy;
         double south, west, north, east;
@@ -70,11 +104,40 @@ public class OfflineAtlas {
     private final Set<String> pending = Collections.synchronizedSet(new HashSet<>());
     private static final Typeface LABEL_FONT = Typeface.create("serif", Typeface.NORMAL);
     int lastLabels, lastVertices;
+    int preparedFrames;
+    int tileDraws;
+    String tileFallback = "none";
+    long snapshotNanos, tileNanos, geometryNanos;
+    int geometryRequests;
+    int loadingLayers;
+    volatile int geometryLoads;
+    final AtlasRasterCache raster = new AtlasRasterCache();
+    final AtlasTiles tiles;
+    final AtlasViewport viewport;
+    String renderBackend = "none";
+    AtlasCoverage lastCoverage = new AtlasCoverage();
+    double lastCoverageFraction, lastColorCoverageFraction;
+    private String rasterViewport;
+    private final java.util.concurrent.atomic.AtomicLong rasterRevision =
+            new java.util.concurrent.atomic.AtomicLong();
+    private volatile boolean closed;
+    private double frameX = Double.NaN, frameY;
+    private float frameDensity;
+    private int frameZoom, frameWidth, frameHeight;
+    static final int FRAME_BYTES = 32 * 1024 * 1024;
+    final android.util.LruCache<Area, AtlasGeometry.Frame> frames =
+            new android.util.LruCache<Area, AtlasGeometry.Frame>(FRAME_BYTES) {
+                protected int sizeOf(Area area, AtlasGeometry.Frame frame) {
+                    return Math.max(1, frame.bytes);
+                }
+            };
     static final int OVERVIEW_ZOOM = 15;
     private final android.util.LruCache<String, ArrayList<Way>> geometry =
             new android.util.LruCache<String, ArrayList<Way>>(CacheBudget.geometry()) {
                 protected int sizeOf(String key, ArrayList<Way> ways) {
                     int size = 0;
+                    if (ways instanceof IndexedWays && ((IndexedWays) ways).renderGeometry != null)
+                        return ((IndexedWays) ways).estimatedBytes;
                     for (Way w : ways) size += w.coords.length * 8 + 96;
                     return Math.max(1, size);
                 }
@@ -85,8 +148,14 @@ public class OfflineAtlas {
     }
 
     public OfflineAtlas(Context context, boolean async, Runnable changed) {
+        this(context, async, changed, changed);
+    }
+
+    public OfflineAtlas(Context context, boolean async, Runnable changed, Runnable tileChanged) {
         this.async = async;
         this.changed = changed;
+        tiles = new AtlasTiles(tileChanged);
+        viewport = new AtlasViewport(tileChanged);
         loader = async ? java.util.concurrent.Executors.newSingleThreadExecutor() : null;
         for (String folder : new String[] {"regions", "visibility"}) {
             File[] files =
@@ -231,20 +300,25 @@ public class OfflineAtlas {
     }
 
     ArrayList<Way> ways(Area area, int zoom) {
+        if (closed) return new ArrayList<>();
+        if (area.eager != null) return area.eager;
         String key = area.source.getPath() + (zoom < OVERVIEW_ZOOM ? "#o" : "");
         ArrayList<Way> ready = geometry.get(key);
         if (ready != null) return ready;
         if (!async) return loadWays(area, zoom < OVERVIEW_ZOOM);
-        if (pending.size() < 8 && pending.add(key) && !loader.isShutdown())
+        if (pending.size() < 8 && pending.add(key) && !loader.isShutdown()) {
+            geometryRequests++;
             loader.execute(
                     () -> {
                         try {
                             loadWays(area, zoom < OVERVIEW_ZOOM);
                         } finally {
                             pending.remove(key);
-                            if (changed != null) changed.run();
+                            if (closed) geometry.evictAll();
+                            if (!closed && changed != null) changed.run();
                         }
                     });
+        }
         return new ArrayList<>();
     }
 
@@ -265,17 +339,37 @@ public class OfflineAtlas {
     }
 
     public void close() {
+        closed = true;
         if (loader != null) loader.shutdownNow();
+        frames.evictAll();
+        raster.clear();
+        tiles.close();
+        viewport.close();
+        synchronized (geometry) {
+            geometry.evictAll();
+        }
+    }
+
+    private void cacheGeometry(String key, ArrayList<Way> data) {
+        // A synchronous wall lookup may finish decoding after close(), outside the loader.
+        synchronized (geometry) {
+            if (!closed) {
+                geometry.put(key, data);
+                geometryLoads++;
+                rasterRevision.incrementAndGet();
+            }
+        }
     }
 
     synchronized ArrayList<Way> loadWays(Area area) {
+        if (closed) return new ArrayList<>();
         if (area.eager != null) return area.eager;
         String key = area.source.getPath();
         ArrayList<Way> data = geometry.get(key);
         if (data == null)
             try {
                 data = decode(new JSONObject(new String(read(area.source), "UTF-8")));
-                geometry.put(key, data);
+                cacheGeometry(key, data);
             } catch (Exception e) {
                 data = new ArrayList<>();
             }
@@ -283,6 +377,7 @@ public class OfflineAtlas {
     }
 
     synchronized ArrayList<Way> loadWays(Area area, boolean overview) {
+        if (closed) return new ArrayList<>();
         if (!overview) return loadWays(area);
         if (area.eager != null) return area.eager;
         String key = area.source.getPath() + "#o";
@@ -290,7 +385,7 @@ public class OfflineAtlas {
         if (data == null)
             try {
                 data = decode(new JSONObject(new String(read(area.source), "UTF-8")), true);
-                geometry.put(key, data);
+                cacheGeometry(key, data);
             } catch (Exception e) {
                 data = new ArrayList<>();
             }
@@ -359,7 +454,378 @@ public class OfflineAtlas {
     }
 
     public void draw(Canvas canvas, MapView map, boolean hybrid) {
-        if (map.zoom < 8) return;
+        if (!hybrid) {
+            lastCoverage = new AtlasCoverage();
+            lastCoverageFraction = lastColorCoverageFraction = 0;
+        }
+        if (closed || map.zoom < 8) return;
+        Matrix transform = new Matrix();
+        canvas.getMatrix(transform);
+        float[] matrix = new float[9];
+        transform.getValues(matrix);
+        // В production тайлы работают и под дробным Canvas-преобразованием.
+        // Строгое совпадение legacy raster replay сохраняется для синхронного пути.
+        if (!map.asyncRendering
+                || !async
+                        && (matrix[Matrix.MSCALE_X] != 1f
+                                || matrix[Matrix.MSCALE_Y] != 1f
+                                || matrix[Matrix.MSKEW_X] != 0f
+                                || matrix[Matrix.MSKEW_Y] != 0f
+                                || matrix[Matrix.MTRANS_X] != Math.rint(matrix[Matrix.MTRANS_X])
+                                || matrix[Matrix.MTRANS_Y] != Math.rint(matrix[Matrix.MTRANS_Y]))) {
+            drawGeometry(canvas, map, hybrid);
+            return;
+        }
+        long revision = rasterRevision.get();
+        if (async) {
+            AtlasTiles.Snapshot snapshot = tileSnapshot(map, hybrid);
+            if (snapshot != null) {
+                if (loadingLayers > 0
+                        && viewport.hasReady(
+                                snapshot,
+                                map.cx,
+                                map.cy,
+                                map.getWidth(),
+                                map.getHeight(),
+                                map.viewportFraction)) {
+                    tileFallback = "geometry-not-ready-replay";
+                    drawViewport(canvas, map, hybrid, snapshot);
+                    return;
+                }
+                raster.clear();
+                long started = System.nanoTime();
+                boolean tiled =
+                        tiles.draw(
+                                canvas,
+                                snapshot,
+                                map.cx,
+                                map.cy,
+                                map.getWidth(),
+                                map.getHeight(),
+                                map.viewportFraction);
+                tileNanos += System.nanoTime() - started;
+                if (tiled) {
+                    frames.evictAll();
+                    tileDraws++;
+                    renderBackend = "tiles";
+                    recordCoverage(tiles.lastCoverage, map, hybrid);
+                    viewport.pause();
+                } else {
+                    tileFallback = "tile-work-memory";
+                    if (smallVisibleSet(snapshot, map)) {
+                        tiles.scene(tileFallback);
+                        viewport.pause();
+                        renderBackend = "geometry";
+                        drawGeometry(canvas, map, hybrid);
+                    } else {
+                        drawViewport(canvas, map, hybrid, snapshot);
+                    }
+                }
+                return;
+            }
+            if ("visible-vertex-budget".equals(tileFallback)
+                    && viewport.supports(map.getWidth(), map.getHeight())) {
+                String reason = tileFallback;
+                snapshot = buildTileSnapshot(map, hybrid, false);
+                tileFallback = reason;
+                drawViewport(canvas, map, hybrid, snapshot);
+                return;
+            }
+            tiles.scene("fallback");
+            viewport.pause();
+            renderBackend = "geometry";
+            drawGeometry(canvas, map, hybrid);
+            return;
+        }
+        String key = rasterKey(map, hybrid, revision);
+        if (raster.draw(canvas, key)) return;
+        String viewport = hybrid ? rasterKey(map, false, revision) : key;
+        if (!viewport.equals(rasterViewport)) {
+            rasterViewport = viewport;
+            raster.clear();
+            // A moving viewport must not allocate/upload a new full-screen bitmap every frame.
+            drawGeometry(canvas, map, hybrid);
+            return;
+        }
+        Bitmap image = raster.allocate(map.getWidth(), map.getHeight());
+        if (image == null) {
+            drawGeometry(canvas, map, hybrid);
+            return;
+        }
+        drawGeometry(new Canvas(image), map, hybrid);
+        canvas.drawBitmap(image, 0, 0, null);
+        // Loading can finish during drawing. Never retain a partially loaded scene.
+        if (!closed && pending.isEmpty() && rasterRevision.get() == revision)
+            raster.put(key, image);
+    }
+
+    private void drawViewport(
+            Canvas canvas, MapView map, boolean hybrid, AtlasTiles.Snapshot snapshot) {
+        if (!viewport.supports(map.getWidth(), map.getHeight())) {
+            tiles.scene("fallback");
+            viewport.pause();
+            renderBackend = "geometry";
+            drawGeometry(canvas, map, hybrid);
+            return;
+        }
+        renderBackend = "viewport-worker";
+        AtlasCoverage coverage =
+                viewport.draw(
+                        canvas,
+                        snapshot,
+                        map.cx,
+                        map.cy,
+                        map.getWidth(),
+                        map.getHeight(),
+                        hybrid,
+                        map.viewportFraction);
+        AtlasCoverage missing =
+                coverage.missing(
+                        AtlasCoverage.visible(
+                                map.getWidth(), map.getHeight(), map.viewportFraction));
+        if (!missing.isEmpty()) {
+            int save = canvas.save();
+            missing.clip(canvas);
+            AtlasCoverage tileCoverage =
+                    tiles.drawReady(
+                            canvas,
+                            snapshot,
+                            map.cx,
+                            map.cy,
+                            map.getWidth(),
+                            map.getHeight(),
+                            map.viewportFraction);
+            canvas.restoreToCount(save);
+            coverage.append(tileCoverage.intersect(missing));
+        }
+        recordCoverage(coverage, map, hybrid);
+        lastVertices = viewport.lastVertices();
+    }
+
+    private void recordCoverage(AtlasCoverage coverage, MapView map, boolean hybrid) {
+        double fraction =
+                coverage.fraction(
+                        AtlasCoverage.visible(
+                                map.getWidth(), map.getHeight(), map.viewportFraction));
+        if (hybrid) lastColorCoverageFraction = fraction;
+        else {
+            lastCoverage = coverage;
+            lastCoverageFraction = fraction;
+        }
+    }
+
+    private boolean smallVisibleSet(AtlasTiles.Snapshot snapshot, MapView map) {
+        long vertices = 0;
+        double scale = 1 << map.zoom;
+        for (AtlasTiles.Layer layer : snapshot.layers) {
+            vertices +=
+                    layer.index.vertices(
+                            map.cx,
+                            map.cy,
+                            map.getWidth() / (2 * scale),
+                            map.getHeight() / (2 * scale),
+                            map.zoom,
+                            4096 - vertices);
+            if (vertices > 4096) return false;
+        }
+        return true;
+    }
+
+    private String rasterKey(MapView map, boolean hybrid, long revision) {
+        StringBuilder key = new StringBuilder();
+        key.append(map.cx)
+                .append(':')
+                .append(map.cy)
+                .append(':')
+                .append(map.zoom)
+                .append(':')
+                .append(map.getWidth())
+                .append(':')
+                .append(map.getHeight())
+                .append(':')
+                .append(map.getResources().getDisplayMetrics().density)
+                .append(':')
+                .append(hybrid)
+                .append(':')
+                .append(map.illustrated)
+                .append(':')
+                .append(revision);
+        for (Area area : areas) {
+            key.append(':')
+                    .append(System.identityHashCode(area))
+                    .append(':')
+                    .append(area.stamp)
+                    .append(':')
+                    .append(area.buildingsOnly)
+                    .append(':')
+                    .append(area.overview)
+                    .append(':')
+                    .append(area.legacy)
+                    .append(':')
+                    .append(area.south)
+                    .append(':')
+                    .append(area.west)
+                    .append(':')
+                    .append(area.north)
+                    .append(':')
+                    .append(area.east)
+                    .append(':')
+                    .append(System.identityHashCode(area.eager));
+        }
+        return key.toString();
+    }
+
+    void drawGeometry(Canvas canvas, MapView map, boolean hybrid) {
+        // The synchronous compatibility path retains legacy interleaved labels.
+        long started = System.nanoTime();
+        drawGeometryLegacy(canvas, map, hybrid);
+        geometryNanos += System.nanoTime() - started;
+    }
+
+    AtlasTiles.Snapshot tileSnapshot(MapView map, boolean hybrid) {
+        long started = System.nanoTime();
+        try {
+            return buildTileSnapshot(map, hybrid);
+        } finally {
+            snapshotNanos += System.nanoTime() - started;
+        }
+    }
+
+    private AtlasTiles.Snapshot buildTileSnapshot(MapView map, boolean hybrid) {
+        return buildTileSnapshot(map, hybrid, true);
+    }
+
+    private AtlasTiles.Snapshot buildTileSnapshot(
+            MapView map, boolean hybrid, boolean enforceBudget) {
+        tileFallback = "none";
+        loadingLayers = 0;
+        double visibleWidth = map.getWidth() / (double) map.viewportFraction;
+        double visibleHeight = map.getHeight() / (double) map.viewportFraction;
+        long columns = (long) Math.ceil(visibleWidth / AtlasTiles.SIZE) + 1;
+        long rows = (long) Math.ceil(visibleHeight / AtlasTiles.SIZE) + 1;
+        long tileBytes =
+                (AtlasTiles.SIZE + 2L * AtlasTiles.GUARD)
+                        * (AtlasTiles.SIZE + 2L * AtlasTiles.GUARD)
+                        * 4;
+        if (enforceBudget && columns * rows * tileBytes * 2 > AtlasTiles.MAX_BYTES) {
+            tileFallback = "viewport-memory";
+            return null;
+        }
+        ArrayList<AtlasTiles.Layer> layers = new ArrayList<>();
+        StringBuilder key = new StringBuilder();
+        key.append(map.zoom)
+                .append(':')
+                .append(map.illustrated)
+                .append(':')
+                .append(map.getResources().getDisplayMetrics().density)
+                .append(':');
+        long vertices = 0;
+        double scale = 1 << map.zoom;
+        double viewportLeft = (map.getWidth() - visibleWidth) / 2;
+        double viewportTop = (map.getHeight() - visibleHeight) / 2;
+        for (Area a : areas) {
+            if (a.overview && map.zoom >= 13
+                    || !a.overview && !a.legacy && map.zoom < 13
+                    || a.legacy && map.zoom < 11) continue;
+            float left = map.screenX(a.west), right = map.screenX(a.east);
+            float top = sy(a.north, map, scale), bottom = sy(a.south, map, scale);
+            if (right < viewportLeft - 256
+                    || left > viewportLeft + visibleWidth + 256
+                    || bottom < viewportTop - 256
+                    || top > viewportTop + visibleHeight + 256
+                    || right <= left) continue;
+            ArrayList<Way> data = ways(a, map.zoom);
+            IndexedWays indexed = data instanceof IndexedWays ? (IndexedWays) data : null;
+            if (indexed == null) loadingLayers++;
+            // Повторный decode после LRU eviction не меняет содержимое файла.
+            String identity =
+                    a.eager == null
+                            ? "file:" + a.source.getPath()
+                            : indexed == null
+                                    ? "loading:" + a.source.getPath()
+                                    : "data:" + indexed.tileIdentity;
+            AtlasTiles.Layer layer =
+                    new AtlasTiles.Layer(
+                            MapView.x(a.west),
+                            MapView.x(a.east),
+                            MapView.y(a.north),
+                            MapView.y(a.south),
+                            a.buildingsOnly,
+                            indexed == null ? EMPTY_FEATURES : indexed.tileIndex,
+                            indexed == null ? EMPTY_LABELS : indexed.labelIndex,
+                            identity
+                                    + ":"
+                                    + a.stamp
+                                    + ":"
+                                    + a.south
+                                    + ":"
+                                    + a.west
+                                    + ":"
+                                    + a.north
+                                    + ":"
+                                    + a.east
+                                    + ":"
+                                    + a.buildingsOnly,
+                            indexed != null);
+            // Дешёвый BVH admission: невидимые вершины области не отключают тайлы.
+            // При потенциально насыщенном видимом наборе legacy сохраняет глобальный
+            // viewport-бюджет и его порядок отбора после упрощения.
+            if (enforceBudget)
+                vertices +=
+                        layer.index.vertices(
+                                map.cx,
+                                map.cy,
+                                visibleWidth / (2 * scale),
+                                visibleHeight / (2 * scale),
+                                map.zoom,
+                                80000 - vertices);
+            if (enforceBudget && vertices > 80000) {
+                tileFallback = "visible-vertex-budget";
+                return null;
+            }
+            layers.add(layer);
+            key.append(':')
+                    .append(identity)
+                    .append(':')
+                    .append(indexed != null)
+                    .append(':')
+                    .append(a.stamp)
+                    .append(':')
+                    .append(a.south)
+                    .append(':')
+                    .append(a.west)
+                    .append(':')
+                    .append(a.north)
+                    .append(':')
+                    .append(a.east)
+                    .append(':')
+                    .append(a.buildingsOnly);
+        }
+        return new AtlasTiles.Snapshot(
+                key.toString(),
+                map.zoom,
+                map.getResources().getDisplayMetrics().density,
+                map.illustrated,
+                hybrid,
+                layers);
+    }
+
+    private void drawGeometryLegacy(Canvas canvas, MapView map, boolean hybrid) {
+        if (closed || map.zoom < 8) return;
+        if (frameX != map.cx
+                || frameY != map.cy
+                || frameZoom != map.zoom
+                || frameWidth != map.getWidth()
+                || frameHeight != map.getHeight()
+                || frameDensity != map.getResources().getDisplayMetrics().density) {
+            frames.evictAll();
+            frameX = map.cx;
+            frameY = map.cy;
+            frameZoom = map.zoom;
+            frameWidth = map.getWidth();
+            frameHeight = map.getHeight();
+            frameDensity = map.getResources().getDisplayMetrics().density;
+        }
         double scale = 1 << map.zoom;
         lastLabels = 0;
         lastVertices = 0;
@@ -387,105 +853,115 @@ public class OfflineAtlas {
                 canvas.drawRect(left, top, right, bottom, paint);
             }
             ArrayList<Way> data = ways(a, map.zoom);
-            for (int pass = 0; pass < 3; pass++)
-                for (Way w : data) {
-                    boolean road = "road".equals(w.type);
-                    int order = road ? 2 : "building".equals(w.type) ? 1 : 0;
-                    if (order != pass) continue;
-                    float wl = map.screenX(w.west),
-                            wr = map.screenX(w.east),
-                            wt = sy(w.north, map, scale),
-                            wb = sy(w.south, map, scale);
-                    if (wr < 0 || wl > map.getWidth() || wb < 0 || wt > map.getHeight()) continue;
-                    if (road && !MapDetail.roadVisible(w.kind, map.zoom)) continue;
-                    if ("building".equals(w.type)
-                            && !MapDetail.buildingVisible(map.zoom, wr - wl, wb - wt)) continue;
-                    if (lastVertices + Math.min(4096, w.coords.length / 2) > 80000) continue;
-                    Path p = new Path();
-                    int stride = Math.max(2, 2 * (int) Math.ceil(w.coords.length / 8192.0));
-                    float previousX = Float.NaN, previousY = Float.NaN;
-                    for (int i = 0;
-                            i < w.coords.length;
-                            i = Math.min(w.coords.length, i + stride)) {
-                        float xx = map.screenX(w.coords[i + 1]), yy = sy(w.coords[i], map, scale);
-                        if (i == 0) {
-                            p.moveTo(xx, yy);
-                            previousX = xx;
-                            previousY = yy;
-                            lastVertices++;
-                        } else if (i == w.coords.length - 2
-                                || Math.abs(xx - previousX) + Math.abs(yy - previousY) >= 1.5f) {
-                            p.lineTo(xx, yy);
-                            previousX = xx;
-                            previousY = yy;
-                            lastVertices++;
-                        }
-                    }
-                    if (w.area) p.close();
-                    if (!road && w.area && (!hybrid || map.illustrated)) {
-                        paint.setStyle(Paint.Style.FILL);
-                        paint.setColor(
-                                map.illustrated
-                                        ? ("water".equals(w.type)
-                                                ? (hybrid ? 0xff78aeb7 : 0xff9cabb1)
-                                                : "building".equals(w.type)
-                                                        ? (hybrid ? 0xffe5d8b6 : 0xffb9b7a2)
-                                                        : (hybrid ? 0xffa6bf89 : 0xffbebfa8))
-                                        : ("water".equals(w.type)
-                                                ? 0xffa9b6ba
-                                                : "building".equals(w.type)
-                                                        ? 0xffa3a8a5
-                                                        : 0xffbfc6be));
-                        canvas.drawPath(p, paint);
-                    }
-                    paint.setStyle(Paint.Style.STROKE);
-                    paint.setStrokeJoin(Paint.Join.ROUND);
-                    paint.setStrokeCap(Paint.Cap.ROUND);
-                    paint.setStrokeWidth(
-                            road ? map.dp(1) * MapDetail.roadWidth(map.zoom) : map.dp(1) * .6f);
+            AtlasGeometry.Frame frame = frames.get(a);
+            if (frame == null
+                    || frame.geometry.source != data
+                    || frame.stamp != a.stamp
+                    || frame.initialVertices != lastVertices) {
+                AtlasGeometry projected =
+                        data instanceof IndexedWays ? ((IndexedWays) data).renderGeometry : null;
+                if (projected == null) projected = new AtlasGeometry(data);
+                frame = new AtlasGeometry.Frame(projected, a.stamp, map, lastVertices);
+                preparedFrames++;
+                frames.put(a, frame);
+            }
+            boolean reuseLabels =
+                    frame.labelsReady
+                            && labelNames.equals(frame.prefixNames)
+                            && labelBoxes.equals(frame.prefixBoxes);
+            if (!reuseLabels) {
+                frame.prefixNames = new HashSet<>(labelNames);
+                frame.prefixBoxes = new ArrayList<>(labelBoxes);
+            }
+            for (AtlasGeometry.Shape shape : frame.shapes) {
+                if (!reuseLabels) {
+                    shape.label = null;
+                    shape.labelBox = null;
+                }
+                Way w = shape.entry.way;
+                boolean road = "road".equals(w.type);
+                Path p = shape.path;
+                lastVertices += shape.vertices;
+                if (!road && w.area && (!hybrid || map.illustrated)) {
+                    paint.setStyle(Paint.Style.FILL);
                     paint.setColor(
                             map.illustrated
-                                    ? (road ? 0xfff5e9c9 : 0xff8b9c7b)
-                                    : (hybrid
-                                            ? (road ? 0xfff4e9a4 : 0xddd9e0d4)
-                                            : (road ? 0xfff5f5ee : 0xff7d8982)));
+                                    ? ("water".equals(w.type)
+                                            ? (hybrid ? 0xff78aeb7 : 0xff9cabb1)
+                                            : "building".equals(w.type)
+                                                    ? (hybrid ? 0xffe5d8b6 : 0xffb9b7a2)
+                                                    : (hybrid ? 0xffa6bf89 : 0xffbebfa8))
+                                    : ("water".equals(w.type)
+                                            ? 0xffa9b6ba
+                                            : "building".equals(w.type) ? 0xffa3a8a5 : 0xffbfc6be));
                     canvas.drawPath(p, paint);
-                    if (road
-                            && map.zoom >= 16
-                            && !w.name.isEmpty()
-                            && lastLabels < 24
-                            && !labelNames.contains(w.name)) {
+                }
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeJoin(Paint.Join.ROUND);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                paint.setStrokeWidth(
+                        road ? map.dp(1) * MapDetail.roadWidth(map.zoom) : map.dp(1) * .6f);
+                paint.setColor(
+                        map.illustrated
+                                ? (road ? 0xfff5e9c9 : 0xff8b9c7b)
+                                : (hybrid
+                                        ? (road ? 0xfff4e9a4 : 0xddd9e0d4)
+                                        : (road ? 0xfff5f5ee : 0xff7d8982)));
+                canvas.drawPath(p, paint);
+                if (reuseLabels) {
+                    if (shape.label != null) {
                         paint.setStyle(Paint.Style.FILL);
                         paint.setColor(hybrid ? Color.WHITE : 0xff33463c);
                         paint.setTypeface(LABEL_FONT);
                         paint.setTextSize(map.dp(11));
-                        float xx = map.screenX(w.coords[1]), yy = sy(w.coords[0], map, scale);
-                        if (xx > 0
-                                && xx < map.getWidth() - map.dp(90)
-                                && yy > map.dp(20)
-                                && yy < map.getHeight() - map.dp(45)) {
-                            String label = w.name.length() > 48 ? w.name.substring(0, 48) : w.name;
-                            RectF box =
-                                    new RectF(
-                                            xx,
-                                            yy - map.dp(18),
-                                            xx + paint.measureText(label) + map.dp(12),
-                                            yy + map.dp(8));
-                            boolean overlaps = false;
-                            for (RectF other : labelBoxes)
-                                if (RectF.intersects(box, other)) {
-                                    overlaps = true;
-                                    break;
-                                }
-                            if (!overlaps) {
-                                labelBoxes.add(box);
-                                labelNames.add(w.name);
-                                lastLabels++;
-                                canvas.drawText(label, xx + map.dp(3), yy - map.dp(3), paint);
+                        labelBoxes.add(shape.labelBox);
+                        labelNames.add(w.name);
+                        lastLabels++;
+                        canvas.drawText(shape.label, shape.labelX, shape.labelY, paint);
+                    }
+                    continue;
+                }
+                if (road
+                        && map.zoom >= 16
+                        && !w.name.isEmpty()
+                        && lastLabels < 24
+                        && !labelNames.contains(w.name)) {
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(hybrid ? Color.WHITE : 0xff33463c);
+                    paint.setTypeface(LABEL_FONT);
+                    paint.setTextSize(map.dp(11));
+                    float xx = map.screenX(w.coords[1]), yy = sy(w.coords[0], map, scale);
+                    if (xx > 0
+                            && xx < map.getWidth() - map.dp(90)
+                            && yy > map.dp(20)
+                            && yy < map.getHeight() - map.dp(45)) {
+                        String label = w.name.length() > 48 ? w.name.substring(0, 48) : w.name;
+                        RectF box =
+                                new RectF(
+                                        xx,
+                                        yy - map.dp(18),
+                                        xx + paint.measureText(label) + map.dp(12),
+                                        yy + map.dp(8));
+                        boolean overlaps = false;
+                        for (RectF other : labelBoxes)
+                            if (RectF.intersects(box, other)) {
+                                overlaps = true;
+                                break;
                             }
+                        if (!overlaps) {
+                            shape.label = label;
+                            shape.labelBox = box;
+                            shape.labelX = xx + map.dp(3);
+                            shape.labelY = yy - map.dp(3);
+                            labelBoxes.add(box);
+                            labelNames.add(w.name);
+                            lastLabels++;
+                            canvas.drawText(label, xx + map.dp(3), yy - map.dp(3), paint);
                         }
                     }
                 }
+            }
+            frame.labelsReady = true;
             paint.setStyle(Paint.Style.FILL);
             canvas.restoreToCount(save);
         }

@@ -103,7 +103,7 @@ public class PhotoSelectionTest {
             for (int i = 0; i < 5; i++)
                 ps.add(photo(i + 1, (-80 + i * 40 - 256) * 360.0 / (256 * (1 << 16))));
             map.setPhotos(ps);
-            PhotoGroups.Group group = map.photoGroups().get(0);
+            PhotoGroups.Group group = map.compactPhotos.groups(map).get(0);
             assertEquals(3, map.photoGroups().size());
             assertTrue(group.x >= 0);
             assertTrue(group.x <= 512);

@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/dotliberty/MapNotes/releases/tag/v1.3.0">Download 1.3.0</a> ·
+  <a href="https://github.com/dotliberty/MapNotes/releases/tag/v1.3.2">Download 1.3.2</a> ·
   <a href="#your-first-walk">Get started</a> ·
-  <a href="docs/1.3-RELEASE.md">Release notes</a> ·
+  <a href="docs/1.3.2-RELEASE.md">Release notes</a> ·
   <a href="README.ru.md">Русский</a>
 </p>
 
@@ -57,8 +57,8 @@ These are **native Canvas renders of the application in Robolectric**, not scree
 
 ## Install or update
 
-1. Open the [1.3.0 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.3.0).
-2. Download **`MapNotes-1.3.0.apk`**. `SHA256SUMS` is available alongside it for checking the download's integrity.
+1. Open the [1.3.2 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.3.2).
+2. Download **`MapNotes-1.3.2.apk`**. `SHA256SUMS` is available alongside it for checking the download's integrity.
 3. Open the APK on your Android device and allow installation from your browser/file manager if prompted.
 
 **Already using the official MapNotes app? Install the new APK over it. Do not uninstall the app or clear its storage.** The official release keeps the same package and signing certificate. An APK with `-debug` in its name is a separate test app, not an update to the official installation.
@@ -104,9 +104,9 @@ Routes, original photos and notes are stored on the device. MapNotes does not im
 
 ## Status and limitations
 
-1.3.0 adds mixed journeys, dynamic walking/running observations, manual corrections and a local personal profile. New logic uses Kotlin alongside the existing Java app. Activity recognition and personalization remain experimental in accuracy; stable distribution is not a claim of completed hardware acceptance. The illustrated interface and camera fixes from 1.2.4 remain.
+**1.3.2 is a major app-optimization update:** smoother map gestures and zoom transitions, background preparation of dense atlas scenes, reusable ready coverage and a lighter on-map photo layout. It includes the mixed journeys and spawn-zone features from earlier releases. The owner approved stable distribution after testing the separate test app on a phone; activity recognition and personalization remain experimental in accuracy.
 
-The release verification run completed **298 Android/JVM tests**, with **3 external-data checks skipped** and no failures. Formatting, resource, geometry, metadata and signing checks also passed. These are local software checks, **not a claim of physical-device activity-recognition/camera/GPS acceptance, battery measurements or guaranteed frame rate**.
+The 1.3.2 release configuration passed **408 Android/JVM tests**, with **3 external-data checks skipped** and no failures; release-build evidence is recorded in [1.3.2 verification](docs/1.3.2-VERIFICATION.md). Newly visited detail can still arrive asynchronously while moving. Local Canvas tests and the owner's phone feedback do not establish guaranteed frame rates across devices or a measured total memory/battery budget.
 
 - GPS accuracy and background recording depend on reception, Android and the device vendor.
 - Lens selection, zoom, photo sizes and camera light depend on advertised hardware support.
@@ -122,7 +122,8 @@ The app uses Java/Kotlin and Android APIs, with one Gradle application/test conf
 
 - [Build and test](docs/BUILDING.md)
 - [Code style and formatting checks](docs/FORMATTING.md)
-- [1.3.0 release notes](docs/1.3-RELEASE.md) and [movement implementation/verification](docs/1.3-VERIFICATION.md)
+- [1.3.2 release notes](docs/1.3.2-RELEASE.md) and [verification](docs/1.3.2-VERIFICATION.md)
+- [Movement implementation/verification](docs/1.3-VERIFICATION.md)
 - [UI verification](docs/1.2.4-DESIGN.md) and [camera-switch regressions](docs/1.2.4-CAMERA-SAFETY.md)
 - [Experimental imagery-assisted tracing](docs/IMAGERY-TRACE.md) — separate beta feature; its earlier version notes are historical.
 

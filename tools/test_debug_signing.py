@@ -52,6 +52,34 @@ class DebugSigningTest(unittest.TestCase):
                 build.build()
             self.assertEqual(2, error.exception.code)
 
+    def test_release_arguments_not_allowed_in_nondebug_test(self):
+        with patch(
+            "sys.argv", ["build.py", "--non-debug-test", "--keystore", "not-read.jks"]
+        ):
+            with self.assertRaises(SystemExit) as error:
+                build.build()
+            self.assertEqual(2, error.exception.code)
+
+    def test_isolated_variants_are_mutually_exclusive(self):
+        with patch("sys.argv", ["build.py", "--debug", "--non-debug-test"]):
+            with self.assertRaises(SystemExit) as error:
+                build.build()
+            self.assertEqual(2, error.exception.code)
+
+    def test_nondebug_test_validates_existing_identity_before_build(self):
+        with patch("sys.argv", ["build.py", "--non-debug-test"]), patch.dict(
+            os.environ, {"JAVA_HOME": "mock-jdk", "ANDROID_HOME": "mock-sdk"}
+        ), patch.object(
+            build, "debug_keystore", return_value=Path("mock-debug.keystore")
+        ), patch.object(
+            subprocess, "run", side_effect=subprocess.CalledProcessError(1, "keytool")
+        ) as runner:
+            with self.assertRaises(subprocess.CalledProcessError):
+                build.build()
+            self.assertEqual(1, runner.call_count)
+            self.assertIn("-list", runner.call_args.args[0])
+            self.assertNotIn("-genkeypair", runner.call_args.args[0])
+
 
 if __name__ == "__main__":
     unittest.main()

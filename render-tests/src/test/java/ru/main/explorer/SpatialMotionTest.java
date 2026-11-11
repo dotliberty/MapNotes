@@ -155,35 +155,25 @@ public class SpatialMotionTest {
     }
 
     @Test
-    public void cardsEnterMoveExitByStableIdentityAndNeverClickGhost() {
+    public void compactCardsChangeByStableIdentityAndNeverClickRemovedPhotos() {
         map.zoom = 16;
         map.setPhotos(photos(photo(1, 0), photo(2, 0)));
-        ArrayList<PhotoGroups.Group> start = map.animatedPhotos();
-        assertEquals(0, start.get(1).opacity, 0);
-        ageCards(80);
-        PhotoGroups.Group middle = map.animatedPhotos().get(1);
-        PhotoGroups.Group target = map.photoGroups().get(1);
-        assertTrue(middle.opacity > 0 && middle.opacity < 1);
-        assertTrue(Math.abs(middle.y - middle.anchorY) < Math.abs(target.y - target.anchorY));
-        ageCards(400);
-        map.animatedPhotos();
+        ArrayList<PhotoGroups.Group> start = map.compactPhotos.groups(map);
+        assertEquals(1, start.size());
+        assertEquals(2, start.get(0).photos.size());
+        assertTrue(map.cards.isEmpty());
         map.setPhotos(photos(photo(2, 0)));
-        ArrayList<PhotoGroups.Group> changed = map.animatedPhotos();
-        assertEquals(2, changed.size());
-        assertTrue(map.cards.get(1L).exiting);
-        assertFalse(map.cards.get(2L).exiting);
+        ArrayList<PhotoGroups.Group> changed = map.compactPhotos.groups(map);
+        assertEquals(1, changed.size());
+        assertEquals(2, changed.get(0).photos.get(0).id);
         long[] tapped = {0};
         map.setPhotoTapListener(p -> tapped[0] = p.get(0).id);
-        PhotoGroups.Group live = null;
-        for (PhotoGroups.Group g : changed) if (!g.exiting) live = g;
-        assertNotNull(live);
+        PhotoGroups.Group live = changed.get(0);
         assertTrue(map.tapPhotos(live.x, live.y));
         assertEquals(2, tapped[0]);
         map.setPhotos(photos());
-        map.animatedPhotos();
         assertFalse(map.tapPhotos(live.x, live.y));
-        ageCards(400);
-        assertTrue(map.animatedPhotos().isEmpty());
+        assertTrue(map.compactPhotos.groups(map).isEmpty());
         assertTrue(map.cards.isEmpty());
     }
 
@@ -192,15 +182,13 @@ public class SpatialMotionTest {
         map.zoom = 16;
         map.viewportFraction = 1.4f;
         map.setPhotos(photos(photo(7, .001)));
-        map.animatedPhotos();
-        ageCards(400);
-        PhotoGroups.Group g = map.animatedPhotos().get(0);
+        PhotoGroups.Group g = map.compactPhotos.groups(map).get(0);
         assertEquals(256 + (map.screenX(.001) - 256) * 1.4f, g.anchorX, .01);
         long[] id = {0};
         map.setPhotoTapListener(p -> id[0] = p.get(0).id);
         assertTrue(map.tapPhotos(g.x, g.y));
         assertEquals(7, id[0]);
-        assertFalse(map.tapPhotos(g.x + 30, g.y + 30));
+        assertFalse(map.tapPhotos(20, 400));
     }
 
     @Test

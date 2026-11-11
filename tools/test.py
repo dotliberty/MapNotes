@@ -19,17 +19,21 @@ def main():
         help="Gradle 8.9 executable (or set GRADLE)",
     )
     parser.add_argument("--test", help="Optional test class/method selector")
+    parser.add_argument(
+        "--variant", choices=("debug", "benchmark", "release"), default="debug"
+    )
     args = parser.parse_args()
     if not args.gradle:
         parser.error("Install Gradle 8.9 and put it on PATH, or set GRADLE")
-    reports = ROOT / "render-tests/build/test-results/testDebugUnitTest"
+    task = "test" + args.variant.capitalize() + "UnitTest"
+    reports = ROOT / "render-tests/build/test-results" / task
     if reports.exists():
         shutil.rmtree(reports)
     command = [
         args.gradle,
         "-p",
         str(ROOT),
-        ":render-tests:testDebugUnitTest",
+        ":render-tests:" + task,
         "--rerun-tasks",
         "--console=plain",
     ]
