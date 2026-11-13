@@ -33,8 +33,8 @@ public class MapDownloadService extends Service {
                 .registerOnSharedPreferenceChangeListener(languageChanged);
     }
 
-    synchronized void refreshLanguage() {
-        if (foreground && notifications != null) {
+    void refreshLanguage() {
+        if (foreground && notifications != null && DownloadedMaps.current(downloadGeneration)) {
             status = currentStatus(this);
             notifications.createNotificationChannel(
                     new NotificationChannel(
@@ -66,17 +66,26 @@ public class MapDownloadService extends Service {
         return hasPending(context) ? Language.text(context, R.string.download_paused) : status;
     }
 
-    synchronized void message(String key, int done, int total, Object... args) {
-        statusText = new StatusText(key, args);
-        progress(statusText.render(this), done, total);
+    void message(String key, int done, int total, Object... args) {
+        StatusText text = new StatusText(key, args);
+        if (DownloadedMaps.publish(downloadGeneration, () -> statusText = text))
+            progress(text.render(this), done, total);
     }
 
-    private synchronized void publish(String text, int done, int total) {
-        status = text;
-        lastDone = done;
-        lastTotal = total;
-        if (foreground && notifications != null)
-            notifications.notify(2, notification(text, done, total));
+    private void publish(String text, int done, int total) {
+        final long expected = downloadGeneration;
+        if (!DownloadedMaps.publish(
+                expected,
+                () -> {
+                    status = text;
+                    lastDone = done;
+                    lastTotal = total;
+                })) return;
+        ui.post(
+                () -> {
+                    if (DownloadedMaps.current(expected) && foreground && notifications != null)
+                        notifications.notify(2, notification(text, done, total));
+                });
     }
 
     private volatile boolean cancel;
@@ -84,6 +93,37 @@ public class MapDownloadService extends Service {
     private Thread worker;
     private NotificationManager notifications;
     private boolean includeSatellite = true;
+    private long downloadGeneration = DownloadedMaps.generation();
+    private static volatile MapDownloadService active;
+
+    static void cancelForClear() {
+        MapDownloadService service = active;
+        if (service == null) return;
+        service.cancel = true;
+        MapNetwork.disconnect(service.connection);
+        if (service.worker != null) service.worker.interrupt();
+        final long retired = service.downloadGeneration;
+        if (active == service) {
+            active = null;
+            running = false;
+        }
+        service.ui.post(
+                () -> {
+                    if (service.downloadGeneration == retired) {
+                        service.foreground = false;
+                        service.stopForeground(true);
+                        service.stopSelf();
+                    }
+                });
+    }
+
+    static void clearStatus(Context context) throws IOException {
+        if (!preferences(context).edit().clear().commit())
+            throw new IOException("Cannot reset map download status");
+        statusText = null;
+        status = "";
+        generation++;
+    }
 
     public IBinder onBind(Intent i) {
         return null;
@@ -92,12 +132,13 @@ public class MapDownloadService extends Service {
     public int onStartCommand(Intent intent, int flags, int id) {
         if (intent != null && "CANCEL".equals(intent.getAction())) {
             cancel = true;
-            if (connection != null) connection.disconnect();
+            MapNetwork.disconnect(connection);
             if (worker != null) worker.interrupt();
             else stopSelf();
             return START_NOT_STICKY;
         }
-        if (running) return START_NOT_STICKY;
+        if (running || DownloadedMaps.clearing || worker != null && worker.isAlive())
+            return START_NOT_STICKY;
         if (intent == null) {
             stopSelf();
             return START_NOT_STICKY;
@@ -115,7 +156,10 @@ public class MapDownloadService extends Service {
             startForeground(2, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
         else startForeground(2, n);
         running = true;
+        active = this;
         cancel = false;
+        downloadGeneration = DownloadedMaps.generation();
+        DownloadedMaps.dismissResult(this);
         double lat = intent.getDoubleExtra("lat", 0),
                 lon = intent.getDoubleExtra("lon", 0),
                 radius = intent.getDoubleExtra("radius", 1000);
@@ -160,7 +204,9 @@ public class MapDownloadService extends Service {
     }
 
     void check() throws IOException {
-        if (cancel || Thread.currentThread().isInterrupted())
+        if (cancel
+                || Thread.currentThread().isInterrupted()
+                || !DownloadedMaps.current(downloadGeneration))
             throw new IOException(
                     Language.text(MapDownloadService.this, R.string.download_cancelled));
     }
@@ -272,18 +318,48 @@ public class MapDownloadService extends Service {
     void download(double lat, double lon, double radius) {
         try {
             RegionPlan plan = new RegionPlan(lat, lon, radius);
-            preferences(this)
-                    .edit()
-                    .putBoolean("pending", true)
-                    .putBoolean("satellite", includeSatellite)
-                    .putLong("lat", Double.doubleToLongBits(lat))
-                    .putLong("lon", Double.doubleToLongBits(lon))
-                    .putLong("radius", Double.doubleToLongBits(radius))
-                    .apply();
+            DownloadedMaps.write(
+                    downloadGeneration,
+                    () ->
+                            preferences(this)
+                                    .edit()
+                                    .putBoolean("pending", true)
+                                    .putBoolean("satellite", includeSatellite)
+                                    .putLong("lat", Double.doubleToLongBits(lat))
+                                    .putLong("lon", Double.doubleToLongBits(lon))
+                                    .putLong("radius", Double.doubleToLongBits(radius))
+                                    .apply());
             new MapPack(
                             getFilesDir(),
                             plan,
                             new MapPack.Transfer() {
+                                public void prepare(File directory, File satellite)
+                                        throws IOException {
+                                    DownloadedMaps.write(
+                                            downloadGeneration,
+                                            () -> {
+                                                directory.mkdirs();
+                                                satellite.mkdirs();
+                                            });
+                                }
+
+                                public void save(File file, byte[] bytes, boolean gzip)
+                                        throws IOException {
+                                    DownloadedMaps.write(
+                                            downloadGeneration,
+                                            () -> MapPack.write(file, bytes, gzip));
+                                }
+
+                                public void discard(File file) throws IOException {
+                                    DownloadedMaps.write(
+                                            downloadGeneration,
+                                            () -> {
+                                                if (file.exists() && !file.delete())
+                                                    throw new IOException(
+                                                            "Cannot discard corrupt map data");
+                                            });
+                                }
+
                                 public byte[] fetch(String url, String query, int limit)
                                         throws Exception {
                                     if (query != null && url.equals(MapPack.ENDPOINT))
@@ -325,7 +401,7 @@ public class MapDownloadService extends Service {
                                 }
 
                                 public void changed() {
-                                    generation = System.currentTimeMillis();
+                                    DownloadedMaps.publish(downloadGeneration, () -> generation++);
                                 }
 
                                 public void waitMillis(long millis) throws Exception {
@@ -355,26 +431,37 @@ public class MapDownloadService extends Service {
                             },
                             includeSatellite)
                     .run();
-            preferences(this).edit().putBoolean("pending", false).apply();
-            statusText =
-                    new StatusText(
-                            includeSatellite
-                                    ? "download_complete_satellite"
-                                    : "download_complete_atlas",
-                            Math.round(radius / 500));
-            status = statusText.render(this);
+            check();
+            DownloadedMaps.write(
+                    downloadGeneration,
+                    () -> preferences(this).edit().putBoolean("pending", false).apply());
+            DownloadedMaps.publish(
+                    downloadGeneration,
+                    () -> {
+                        statusText =
+                                new StatusText(
+                                        includeSatellite
+                                                ? "download_complete_satellite"
+                                                : "download_complete_atlas",
+                                        Math.round(radius / 500));
+                        status = statusText.render(this);
+                    });
         } catch (Exception e) {
-            statusText =
-                    cancel
-                            ? new StatusText("download_paused_tap_resume")
-                            : new StatusText(
-                                    "download_failure",
-                                    e.getMessage() == null
-                                            ? e.getClass().getSimpleName()
-                                            : e.getMessage());
-            status = statusText.render(this);
+            DownloadedMaps.publish(
+                    downloadGeneration,
+                    () -> {
+                        statusText =
+                                cancel
+                                        ? new StatusText("download_paused_tap_resume")
+                                        : new StatusText(
+                                                "download_failure",
+                                                e.getMessage() == null
+                                                        ? e.getClass().getSimpleName()
+                                                        : e.getMessage());
+                        status = statusText.render(this);
+                    });
         } finally {
-            synchronized (this) {
+            {
                 foreground = false;
                 android.content.SharedPreferences.Editor edit =
                         preferences(this).edit().putString("status", status);
@@ -385,32 +472,39 @@ public class MapDownloadService extends Service {
                                     "status_args",
                                     new JSONArray(Arrays.asList(text.args)).toString());
                 else edit.remove("status_key").remove("status_args");
-                edit.apply();
-                running = false;
-                stopForeground(true);
+                try {
+                    DownloadedMaps.write(downloadGeneration, edit::apply);
+                } catch (IOException cleared) {
+                }
+                if (active == this) {
+                    active = null;
+                    running = false;
+                    stopForeground(true);
+                }
             }
-            stopSelf();
+            if (DownloadedMaps.current(downloadGeneration)) stopSelf();
         }
     }
 
     public void onTimeout(int startId, int fgsType) {
         cancel = true;
-        if (connection != null) connection.disconnect();
+        MapNetwork.disconnect(connection);
         if (worker != null) worker.interrupt();
         stopSelf();
     }
 
     public void onDestroy() {
-        synchronized (this) {
-            foreground = false;
-        }
+        foreground = false;
         getSharedPreferences(Language.PREFS, 0)
                 .unregisterOnSharedPreferenceChangeListener(languageChanged);
         ui.removeCallbacksAndMessages(null);
         cancel = true;
-        if (connection != null) connection.disconnect();
+        MapNetwork.disconnect(connection);
         if (worker != null && worker != Thread.currentThread()) worker.interrupt();
-        running = false;
+        if (active == this) {
+            active = null;
+            running = false;
+        }
         super.onDestroy();
     }
 }

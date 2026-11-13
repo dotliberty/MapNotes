@@ -6,6 +6,7 @@ import java.util.*;
 final class AtlasFeatureIndex {
     final List<AtlasTiles.Feature> features;
     final long bytes;
+    final long structureBytes;
     private final AtlasTiles.Feature[] entries;
     private final Node root;
     private final boolean ordered;
@@ -139,7 +140,8 @@ final class AtlasFeatureIndex {
                     Comparator.comparingInt((AtlasTiles.Feature f) -> f.pass)
                             .thenComparingInt(f -> f.ordinal));
         root = new Node(entries, 0, entries.length, !ordered);
-        long bytes = 256L + entries.length * 64L;
+        structureBytes = 256L + entries.length * 64L;
+        long bytes = structureBytes;
         for (AtlasTiles.Feature f : features) bytes += 128L + f.xy.length * 8L;
         this.bytes = bytes;
     }

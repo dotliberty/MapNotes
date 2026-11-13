@@ -17,18 +17,29 @@ final class MapNetwork {
                     });
 
     static boolean enabled(Context c) {
-        return c.getSharedPreferences("map-view", 0).getBoolean("online", true);
+        return !DownloadedMaps.clearing
+                && c.getSharedPreferences("map-view", 0).getBoolean("online", true);
     }
 
-    static void setEnabled(Context c, boolean enabled) {
+    static boolean setEnabled(Context c, boolean enabled) {
         HttpURLConnection[] disconnect;
+        boolean saved =
+                c.getSharedPreferences("map-view", 0).edit().putBoolean("online", enabled).commit();
         synchronized (active) {
-            c.getSharedPreferences("map-view", 0).edit().putBoolean("online", enabled).commit();
             disconnect =
                     enabled ? new HttpURLConnection[0] : active.toArray(new HttpURLConnection[0]);
             if (!enabled) active.clear();
         }
         for (HttpURLConnection h : disconnect) closing.execute(h::disconnect);
+        return saved;
+    }
+
+    static void disconnect(HttpURLConnection connection) {
+        if (connection == null) return;
+        synchronized (active) {
+            active.remove(connection);
+        }
+        closing.execute(connection::disconnect);
     }
 
     static void cancel(Collection<HttpURLConnection> connections) {

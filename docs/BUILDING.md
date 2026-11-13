@@ -18,9 +18,9 @@ From the repository root:
 python tools/build.py
 ```
 
-This invokes the common Gradle Java/Kotlin build, resolves pinned Android dependencies, packages all required dex/resources and aligns the unsigned APK. The result follows the manifest version, currently `build/MapNotes-1.3.2-unsigned.apk`. **Unsigned APKs are not installable.** No dependency binaries, generated manifests or local signing material are source files.
+This invokes the common Gradle Java/Kotlin build, resolves pinned Android dependencies, packages all required dex/resources and aligns the unsigned APK. The result follows the manifest version, currently `build/MapNotes-1.3.2.2-unsigned.apk`. **Unsigned APKs are not installable.** No dependency binaries, generated manifests or local signing material are source files.
 
-For the separate installable debug app, use `python tools/build.py --debug`, followed by `python tools/verify_debug_apk.py build/MapNotes-1.3.2-debug.apk`. The persistent user-local debug keystore must already exist; this workflow will not generate it. Gradle signing is disabled; the helper validates the existing key, then aligns/signs/verifies through the Android SDK tools.
+For the separate installable debug app, use `python tools/build.py --debug`, followed by `python tools/verify_debug_apk.py build/MapNotes-1.3.2.2-debug.apk`. The persistent user-local debug keystore must already exist; this workflow will not generate it. Gradle signing is disabled; the helper validates the existing key, then aligns/signs/verifies through the Android SDK tools.
 
 For performance comparisons without ART debugging mode, use
 `python tools/build.py --non-debug-test`. This builds the `benchmark` variant with

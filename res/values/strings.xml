@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="clear_maps_title">Delete all downloaded areas</string>
+    <string name="clear_maps_scope">Delete all downloaded and unfinished areas, automatic street/building downloads, satellite images and their temporary caches from this device. Corrupt downloads are included. Walk history, exploration progress, photos, notes, zones, other settings, and connected or separately imported MBTiles maps are kept. Map network will be paused to prevent immediate downloads; use the Network button on the map to resume.</string>
+    <string name="clear_maps_busy">Deleting downloaded maps… Network is paused.</string>
+    <string name="clear_maps_done">Downloaded areas deleted. Network is paused; tap Network to resume.</string>
+    <string name="clear_maps_failed">Map cleanup did not finish. Some files or download state may remain. Retry Delete all downloaded areas. Network remains paused if it was saved successfully.</string>
+    <string name="map_trace_export">Export map diagnostics</string>
+    <string name="map_trace_saved">Map diagnostics saved</string>
+    <string name="map_trace_failed">Could not save map diagnostics</string>
     <string name="camera_atlas_header">Camera</string>
     <string name="camera_atlas_modes">Modes</string>
     <string name="camera_atlas_gallery">Gallery</string>

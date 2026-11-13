@@ -10,12 +10,18 @@ final class RevealCache implements AutoCloseable {
     private final Context context;
     private SQLiteDatabase db;
     private int writes;
+    final long downloadGeneration = DownloadedMaps.generation();
+    private boolean closed;
+    private DownloadedMaps.Lease transaction;
 
     RevealCache(Context c) {
         context = c.getApplicationContext();
+        DownloadedMaps.register(this);
     }
 
     private SQLiteDatabase database() {
+        if (closed || !DownloadedMaps.current(downloadGeneration))
+            throw new IllegalStateException("Expired reveal cache");
         if (db == null) {
             db =
                     SQLiteDatabase.openOrCreateDatabase(
@@ -28,21 +34,43 @@ final class RevealCache implements AutoCloseable {
 
     void begin() {
         try {
+            transaction = DownloadedMaps.enter(downloadGeneration);
             database().beginTransaction();
         } catch (Exception failure) {
+            if (transaction != null) {
+                transaction.close();
+                transaction = null;
+            }
             android.util.Log.w("MapNotes", "Visibility cache unavailable");
         }
     }
 
     void end() {
-        if (db != null && db.inTransaction()) {
-            db.setTransactionSuccessful();
-            db.endTransaction();
+        end(true);
+    }
+
+    void end(boolean success) {
+        try {
+            if (db != null && db.inTransaction()) {
+                try {
+                    if (success && DownloadedMaps.current(downloadGeneration))
+                        db.setTransactionSuccessful();
+                } finally {
+                    db.endTransaction();
+                }
+            }
+        } finally {
+            if (transaction != null) {
+                transaction.close();
+                transaction = null;
+            }
         }
     }
 
     double[] read(String key) {
-        try (Cursor c = database().rawQuery("SELECT v FROM shapes WHERE k=?", new String[] {key})) {
+        try (DownloadedMaps.Lease ignored = DownloadedMaps.enter(downloadGeneration);
+                Cursor c =
+                        database().rawQuery("SELECT v FROM shapes WHERE k=?", new String[] {key})) {
             if (!c.moveToFirst()) return null;
             byte[] bytes = c.getBlob(0);
             if (bytes.length % 8 != 0) return null;
@@ -55,7 +83,7 @@ final class RevealCache implements AutoCloseable {
     }
 
     void write(String key, double[] shape) {
-        try {
+        try (DownloadedMaps.Lease ignored = DownloadedMaps.enter(downloadGeneration)) {
             byte[] bytes = new byte[shape.length * 8];
             ByteBuffer.wrap(bytes).asDoubleBuffer().put(shape);
             ContentValues v = new ContentValues();
@@ -80,7 +108,9 @@ final class RevealCache implements AutoCloseable {
         }
     }
 
-    public void close() {
+    public synchronized void close() {
+        closed = true;
+        DownloadedMaps.forget(this);
         if (db != null) {
             db.close();
             db = null;

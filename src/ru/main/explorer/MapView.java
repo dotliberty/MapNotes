@@ -11,7 +11,7 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-public class MapView extends View {
+public class MapView extends View implements DownloadedMaps.Listener {
     android.animation.ValueAnimator viewportMotion;
     double displayZoom = 2;
     float viewportFraction = 1;
@@ -87,6 +87,7 @@ public class MapView extends View {
     int zoom = 2;
     boolean follow = true;
     volatile boolean online = true;
+    private volatile long downloadGeneration = DownloadedMaps.generation();
     boolean illustrated = true;
     private final Paint paint = new Paint(3);
     private final ArrayList<WorldLand> lands = new ArrayList<>();
@@ -334,13 +335,19 @@ public class MapView extends View {
     long lastFrameNanos, lastBaseNanos, lastMaskNanos;
     volatile long routeBuildNanos;
     int routeFramesRequested, routeFramesCompleted, routeFramesCancelled;
-    private long revision;
+    private volatile long revision;
     private RouteFrame readyFrame;
+    private long lineRevision;
+    private final RouteLines routeLines =
+            new RouteLines(
+                    () -> {
+                        if (!closed) postInvalidate();
+                    });
     private final ArrayDeque<RouteFrame> frameHistory = new ArrayDeque<>();
     private volatile double desiredX, desiredY;
     private volatile int desiredZoom;
     private volatile long indexTicket;
-    private final RevealCache revealDisk = new RevealCache(getContext());
+    private RevealCache revealDisk = new RevealCache(getContext());
     private double revealLat = Double.NaN, revealLon;
     private long revealSession;
     private volatile WorldMap world;
@@ -348,11 +355,16 @@ public class MapView extends View {
     private String worldStatus = "";
     private android.location.Location current;
     private boolean currentCanReveal;
-    private OfflineAtlas atlas;
+    private volatile OfflineAtlas atlas;
 
     public void reloadRegions() {
-        if (closed) return;
-        if (!asyncRendering) {
+        reloadRegions(false);
+    }
+
+    private void reloadRegions(boolean forceWorker) {
+        if (closed || DownloadedMaps.clearing) return;
+        final long expected = downloadGeneration;
+        if (!asyncRendering && !forceWorker) {
             replaceAtlas(new OfflineAtlas(getContext()));
             return;
         }
@@ -364,6 +376,7 @@ public class MapView extends View {
         long ticket = ++indexTicket;
         mapWorker.execute(
                 () -> {
+                    if (!downloadCurrent(expected)) return;
                     OfflineAtlas loaded =
                             new OfflineAtlas(
                                     getContext(),
@@ -371,25 +384,31 @@ public class MapView extends View {
                                     () ->
                                             ui.post(
                                                     () -> {
-                                                        if (!closed) {
+                                                        if (downloadCurrent(expected)
+                                                                && ticket == indexTicket) {
                                                             revision++;
                                                             invalidate();
                                                         }
                                                     }),
                                     () -> {
-                                        if (!closed) postInvalidate();
+                                        if (downloadCurrent(expected) && ticket == indexTicket)
+                                            postInvalidate();
                                     });
+                    if (!downloadCurrent(expected)) {
+                        loaded.close();
+                        return;
+                    }
                     ui.post(
                             () -> {
-                                if (closed || ticket != indexTicket) {
-                                    loaded.close();
+                                if (!downloadCurrent(expected) || ticket != indexTicket) {
+                                    DownloadedMaps.retire(loaded);
                                     return;
                                 }
                                 indexing = false;
                                 replaceAtlas(loaded);
                                 if (indexAgain) {
                                     indexAgain = false;
-                                    reloadRegions();
+                                    reloadRegions(forceWorker);
                                 }
                             });
                 });
@@ -399,6 +418,8 @@ public class MapView extends View {
         OfflineAtlas old = atlas;
         loaded.reuseGeometry(old);
         atlas = loaded;
+        readyFrame = null;
+        frameHistory.clear();
         if (old != null) old.close();
         if (!asyncRendering) visibilityCache.evictAll();
         revision++;
@@ -414,7 +435,11 @@ public class MapView extends View {
     }
 
     void requestFrame() {
-        if (viewportMotion != null || (scale != null && scale.isInProgress())) return;
+        if (DownloadedMaps.clearing) return;
+        if (viewportMotion != null) {
+            MapTrace.record(MapTrace.Lane.MASK, MapTrace.Event.STATE, 0, revision, zoom, 1);
+            return;
+        }
         desiredX = cx;
         desiredY = cy;
         desiredZoom = zoom;
@@ -427,7 +452,10 @@ public class MapView extends View {
                     break;
                 }
             }
-        if (rendering) return;
+        if (rendering) {
+            MapTrace.record(MapTrace.Lane.MASK, MapTrace.Event.STATE, 0, revision, zoom, 2);
+            return;
+        }
         if (readyFrame != null
                 && readyFrame.revision == revision
                 && readyFrame.zoom == zoom
@@ -444,16 +472,28 @@ public class MapView extends View {
         RouteFrame frame =
                 new RouteFrame(
                         cx, cy, zoom, getWidth(), getHeight(), revision, points, live, atlas);
+        MapTrace.record(
+                MapTrace.Lane.MASK,
+                MapTrace.Event.QUEUE,
+                MapTrace.id(frame),
+                frame.revision,
+                frame.zoom,
+                points.size());
         frame.raster = true;
         frame.lineDensity = getResources().getDisplayMetrics().density;
         frame.progress = preview -> ui.post(() -> publishPreview(preview, frame));
         final WorldMap selectedWorld = world;
+        final OfflineAtlas selectedAtlas = atlas;
+        final long selectedGeneration = downloadGeneration;
         frame.world = selectedWorld;
         frame.diskCache = revealDisk;
         frame.cache = visibilityCache;
         frame.cancelled =
                 () ->
                         closed
+                                || !DownloadedMaps.current(selectedGeneration)
+                                || revision != frame.revision
+                                || atlas != selectedAtlas
                                 || world != selectedWorld
                                 || desiredZoom != frame.zoom
                                 || Math.abs(frame.cx - desiredX) * (1 << frame.zoom)
@@ -463,8 +503,25 @@ public class MapView extends View {
         routeWorker.execute(
                 () -> {
                     long buildStarted = System.nanoTime();
+                    MapTrace.record(
+                            MapTrace.Lane.MASK,
+                            MapTrace.Event.START,
+                            MapTrace.id(frame),
+                            frame.revision,
+                            frame.zoom,
+                            0);
                     try {
                         frame.build();
+                    } catch (java.util.concurrent.CancellationException cancelled) {
+                        // Штатный отзыв поколения/запроса; finally снимает rendering на UI.
+                    } catch (OutOfMemoryError allocation) {
+                        MapTrace.record(
+                                MapTrace.Lane.MASK,
+                                MapTrace.Event.OOM,
+                                MapTrace.id(frame),
+                                frame.width,
+                                frame.height,
+                                0);
                     } finally {
                         routeBuildNanos += System.nanoTime() - buildStarted;
                         ui.post(
@@ -473,6 +530,13 @@ public class MapView extends View {
                                     if (!closed) {
                                         if (frame.complete && !frame.cancelled.getAsBoolean()) {
                                             routeFramesCompleted++;
+                                            MapTrace.record(
+                                                    MapTrace.Lane.MASK,
+                                                    MapTrace.Event.PUBLISH,
+                                                    MapTrace.id(frame),
+                                                    frame.revision,
+                                                    frame.zoom,
+                                                    System.nanoTime() - buildStarted);
                                             readyFrame = frame;
                                             frameHistory.removeIf(
                                                     old ->
@@ -492,6 +556,25 @@ public class MapView extends View {
                                                 frameHistory.removeFirst();
                                         } else {
                                             routeFramesCancelled++;
+                                            MapTrace.record(
+                                                    MapTrace.Lane.MASK,
+                                                    MapTrace.Event.CANCEL,
+                                                    MapTrace.id(frame),
+                                                    frame.revision,
+                                                    frame.zoom,
+                                                    closed
+                                                            ? 1
+                                                            : atlas != selectedAtlas
+                                                                    ? 2
+                                                                    : world != selectedWorld
+                                                                            ? 3
+                                                                            : revision
+                                                                                            != frame.revision
+                                                                                    ? 4
+                                                                                    : desiredZoom
+                                                                                                    != frame.zoom
+                                                                                            ? 5
+                                                                                            : 6);
                                         }
                                         invalidate();
                                     }
@@ -666,7 +749,7 @@ public class MapView extends View {
         Language.initialize(c);
         setContentDescription(Language.text(c, R.string.map_accessibility));
         this.asyncRendering = asyncRendering;
-        online = c.getSharedPreferences("map-view", 0).getBoolean("online", true);
+        online = MapNetwork.enabled(c);
         try {
             InputStream in = c.getAssets().open("world.json");
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -768,6 +851,43 @@ public class MapView extends View {
                                 return true;
                             }
                         });
+        DownloadedMaps.observe(this);
+    }
+
+    private boolean downloadCurrent(long expected) {
+        return !closed && downloadGeneration == expected && DownloadedMaps.current(expected);
+    }
+
+    @Override
+    public void downloadedMapsChanged() {
+        if (closed) return;
+        long next = DownloadedMaps.generation();
+        if (downloadGeneration != next || DownloadedMaps.clearing) {
+            downloadGeneration = next;
+            online = MapNetwork.enabled(getContext());
+            indexTicket++;
+            indexing = indexAgain = false;
+            atlas = null;
+            readyFrame = null;
+            frameHistory.clear();
+            visibilityCache.evictAll();
+            tiles.evictAll();
+            pending.clear();
+            failed.clear();
+            satelliteRetryAt.clear();
+            satelliteErrors.clear();
+            nextBuildingFetch = 0;
+            fetchingBuildings = false;
+            buildingStatus = "";
+            MapNetwork.cancel(liveConnections);
+            revision++;
+        }
+        if (!DownloadedMaps.clearing) {
+            online = MapNetwork.enabled(getContext());
+            if (revealDisk.downloadGeneration != next) revealDisk = new RevealCache(getContext());
+            reloadRegions(true);
+        }
+        invalidate();
     }
 
     void polygon(JSONArray rings) throws Exception {
@@ -824,6 +944,8 @@ public class MapView extends View {
             }
         }
         points = new ArrayList<>(p);
+        lineRevision++;
+        if (points.isEmpty()) routeLines.clear();
         if (follow && viewportMotion == null && current == null && !p.isEmpty()) {
             double[] a = p.get(p.size() - 1);
             cx = x(a[1]);
@@ -1001,6 +1123,8 @@ public class MapView extends View {
             Collections.synchronizedSet(new HashSet<>());
 
     public void toggleOnline() {
+        if (DownloadedMaps.clearing) return;
+        DownloadedMaps.dismissResult(getContext());
         online = !online;
         MapNetwork.setEnabled(getContext(), online);
         if (online) {
@@ -1016,6 +1140,8 @@ public class MapView extends View {
         if (closed) return;
         stopViewport();
         closed = true;
+        DownloadedMaps.forget(this);
+        routeLines.close();
         setZoneEditor(null);
         zoneLongPress = null;
         zoneTap = null;
@@ -1053,6 +1179,13 @@ public class MapView extends View {
     }
 
     public boolean onTouchEvent(MotionEvent e) {
+        MapTrace.record(
+                MapTrace.Lane.INPUT,
+                MapTrace.Event.INPUT,
+                e.getActionMasked(),
+                e.getPointerCount(),
+                Math.round((zoom + Math.log(viewportFraction) / Math.log(2)) * 1000),
+                e.getEventTime());
         if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
             stopViewport();
             AtlasMotion.cancel(this);
@@ -1068,6 +1201,7 @@ public class MapView extends View {
     }
 
     protected void onDraw(Canvas c) {
+        if (downloadGeneration != DownloadedMaps.generation()) downloadedMapsChanged();
         long frameStarted = System.nanoTime();
         super.onDraw(c);
         int viewportSave = c.save();
@@ -1078,6 +1212,16 @@ public class MapView extends View {
         lastBaseNanos = System.nanoTime() - baseStarted;
         long maskStarted = System.nanoTime();
         if (asyncRendering) {
+            if (viewportMotion == null && illustrated)
+                routeLines.request(
+                        cx,
+                        cy,
+                        zoom,
+                        getWidth(),
+                        getHeight(),
+                        getResources().getDisplayMetrics().density,
+                        lineRevision,
+                        points);
             requestFrame();
             drawFrameMask(c);
         }
@@ -1117,6 +1261,13 @@ public class MapView extends View {
                 getHeight() - dp(9),
                 paint);
         lastFrameNanos = System.nanoTime() - frameStarted;
+        MapTrace.record(
+                MapTrace.Lane.FRAME,
+                MapTrace.Event.DRAW,
+                revision,
+                Math.round((zoom + Math.log(viewportFraction) / Math.log(2)) * 1000),
+                lastBaseNanos,
+                lastFrameNanos);
     }
 
     static boolean connects(double[] a, double[] b) {
@@ -1153,16 +1304,22 @@ public class MapView extends View {
     void drawRoute(Canvas c) {
         if (!illustrated) return;
         if (asyncRendering) {
-            if (readyFrame != null && readyFrame.lineImage != null)
-                readyFrame.drawImage(
-                        c,
-                        readyFrame.lineImage,
-                        cx,
-                        cy,
-                        zoom,
-                        getWidth(),
-                        getHeight(),
-                        new Paint(3));
+            RouteFrame line = routeLines.ready(lineRevision);
+            if (line == null
+                    && readyFrame != null
+                    && (lineRevision == 0 || !points.isEmpty() && readyFrame.revision == revision))
+                line = readyFrame;
+            if (line != null && line.lineImage != null) {
+                MapTrace.record(
+                        MapTrace.Lane.LINE,
+                        MapTrace.Event.DRAW,
+                        MapTrace.id(line),
+                        line.revision,
+                        line.zoom,
+                        zoom);
+                line.drawImage(
+                        c, line.lineImage, cx, cy, zoom, getWidth(), getHeight(), new Paint(3));
+            }
             return;
         }
         Path route = asyncRendering ? framePath(false) : new Path();
@@ -1201,7 +1358,23 @@ public class MapView extends View {
 
     void drawFrameMask(Canvas c) {
         RouteFrame f = readyFrame;
+        MapTrace.record(
+                MapTrace.Lane.MASK,
+                MapTrace.Event.STATE,
+                MapTrace.id(f),
+                revision,
+                f == null ? -1 : f.revision,
+                f == null || f.mask == null
+                        ? 0
+                        : f.revision != revision ? 3 : f.zoom != zoom ? 4 : f.complete ? 5 : 6);
         if (f == null || f.mask == null) return;
+        MapTrace.record(
+                MapTrace.Lane.COLOR,
+                MapTrace.Event.DRAW,
+                MapTrace.id(f),
+                f.revision,
+                f.zoom,
+                f.complete ? 1 : 0);
         float scale = (float) Math.pow(2, zoom - f.zoom);
         double dx = f.cx - cx;
         if (dx > 128) dx -= 256;
@@ -1391,7 +1564,8 @@ public class MapView extends View {
     }
 
     void ensureBuildingData() {
-        if (world != null && world.vector
+        if (!DownloadedMaps.current(downloadGeneration)
+                || world != null && world.vector
                 || !online
                 || current == null
                 || fetchingBuildings
@@ -1403,13 +1577,14 @@ public class MapView extends View {
         fetchingBuildings = true;
         nextBuildingFetch = android.os.SystemClock.uptimeMillis() + 120000;
         double lat = current.getLatitude(), lon = current.getLongitude();
+        final long expected = downloadGeneration;
         pool.execute(
                 () -> {
                     try {
-                        BuildingFetch.fetch(
-                                getContext(), lat, lon, liveConnections, () -> online && !closed);
+                        fetchBuildings(lat, lon, expected);
                         ui.post(
                                 () -> {
+                                    if (!downloadCurrent(expected)) return;
                                     reloadRegions();
                                     buildingStatus = "";
                                     invalidate();
@@ -1417,6 +1592,7 @@ public class MapView extends View {
                     } catch (Exception e) {
                         ui.post(
                                 () -> {
+                                    if (!downloadCurrent(expected)) return;
                                     buildingStatus =
                                             Language.text(
                                                     getContext(),
@@ -1427,8 +1603,29 @@ public class MapView extends View {
                                     invalidate();
                                 });
                     } finally {
-                        fetchingBuildings = false;
+                        finishBuildingRequest(expected);
                     }
+                });
+    }
+
+    void fetchBuildings(double lat, double lon, long expected) throws Exception {
+        BuildingFetch.fetch(
+                getContext(), lat, lon, liveConnections, () -> online && downloadCurrent(expected));
+    }
+
+    void finishBuildingRequest(long expected) {
+        DownloadedMaps.publish(
+                expected,
+                () -> {
+                    if (downloadCurrent(expected)) fetchingBuildings = false;
+                });
+    }
+
+    void finishTileRequest(String key, long expected) {
+        DownloadedMaps.publish(
+                expected,
+                () -> {
+                    if (downloadCurrent(expected)) pending.remove(key);
                 });
     }
 
@@ -1465,22 +1662,41 @@ public class MapView extends View {
             failed.remove(key);
             satelliteRetryAt.remove(key);
         }
-        if (!closed && !failed.contains(key) && pending.add(key) && !photoPool.isShutdown()) {
+        if (DownloadedMaps.current(downloadGeneration)
+                && !closed
+                && !failed.contains(key)
+                && pending.add(key)
+                && !photoPool.isShutdown()) {
+            final long expected = downloadGeneration;
             photoPool.execute(
                     () -> {
                         try {
                             Bitmap loaded = PhotoFiles.load(photo.path, 64);
-                            if (!closed && loaded != null) tiles.put(key, loaded);
-                            else if (!closed) failed.add(key);
+                            DownloadedMaps.publish(
+                                    expected,
+                                    () -> {
+                                        if (!downloadCurrent(expected)) return;
+                                        if (loaded != null) tiles.put(key, loaded);
+                                        else failed.add(key);
+                                    });
                         } catch (Exception error) {
-                            if (!closed) failed.add(key);
+                            DownloadedMaps.publish(
+                                    expected,
+                                    () -> {
+                                        if (downloadCurrent(expected)) failed.add(key);
+                                    });
                         } finally {
-                            if (!closed && failed.contains(key)) {
-                                satelliteRetryAt.put(
-                                        key, android.os.SystemClock.uptimeMillis() + 10000);
-                                postInvalidateDelayed(10000);
-                            }
-                            pending.remove(key);
+                            DownloadedMaps.publish(
+                                    expected,
+                                    () -> {
+                                        if (downloadCurrent(expected) && failed.contains(key)) {
+                                            satelliteRetryAt.put(
+                                                    key,
+                                                    android.os.SystemClock.uptimeMillis() + 10000);
+                                            postInvalidateDelayed(10000);
+                                        }
+                                    });
+                            finishTileRequest(key, expected);
                             if (!closed) postInvalidate();
                         }
                     });
@@ -1576,15 +1792,17 @@ public class MapView extends View {
                                     (float) ((ty + 1) * tileSize - wy + getHeight() / 2.0)),
                             paint);
                 else if (!failed.contains(key)
+                        && DownloadedMaps.current(downloadGeneration)
                         && pending.add(key)
                         && !pool.isShutdown()
                         && !satellitePool.isShutdown()) {
                     int z = tileZoom, xx = wrapped, yy = ty;
+                    final long expected = downloadGeneration;
                     (satellite ? satellitePool : pool)
                             .execute(
                                     () -> {
-                                        if (satellite) loadSatellite(key, z, xx, yy);
-                                        else loadTile(key, z, xx, yy);
+                                        if (satellite) loadSatellite(key, z, xx, yy, expected);
+                                        else loadTile(key, z, xx, yy, expected);
                                     });
                 }
             }
@@ -1656,16 +1874,23 @@ public class MapView extends View {
     }
 
     void loadSatellite(String key, int z, int x, int y) {
+        loadSatellite(key, z, x, y, downloadGeneration);
+    }
+
+    HttpURLConnection mapConnection(String address) throws IOException {
+        return (HttpURLConnection) new URL(address).openConnection();
+    }
+
+    private void loadSatellite(String key, int z, int x, int y, long expected) {
         try {
+            if (!downloadCurrent(expected)) return;
             File dir = new File(getContext().getFilesDir(), "satellite");
-            dir.mkdirs();
+            DownloadedMaps.write(expected, () -> dir.mkdirs());
             File f = new File(dir, RegionPlan.tileName(z, x, y));
             Bitmap b = f.exists() ? BitmapFactory.decodeFile(f.getPath()) : null;
             if (b == null) b = readAncestor(dir, z, x, y);
             if (b == null && online) {
-                HttpURLConnection h =
-                        (HttpURLConnection)
-                                new URL(RegionPlan.satelliteUrl(z, x, y)).openConnection();
+                HttpURLConnection h = mapConnection(RegionPlan.satelliteUrl(z, x, y));
                 liveConnections.add(h);
                 MapNetwork.configure(h);
                 h.setRequestProperty("User-Agent", "MapNotes/0.11 (Android; ru.main.explorer)");
@@ -1697,12 +1922,17 @@ public class MapView extends View {
                             new File(
                                     getContext().getCacheDir(),
                                     "sat-" + RegionPlan.tileName(z, x, y));
-                    try (FileOutputStream out = new FileOutputStream(tmp)) {
-                        out.write(bytes);
-                    }
-                    if (!tmp.renameTo(f))
-                        throw new IOException(
-                                Language.text(getContext(), R.string.could_not_save_image));
+                    DownloadedMaps.write(
+                            expected,
+                            () -> {
+                                try (FileOutputStream out = new FileOutputStream(tmp)) {
+                                    out.write(bytes);
+                                }
+                                if (!tmp.renameTo(f))
+                                    throw new IOException(
+                                            Language.text(
+                                                    getContext(), R.string.could_not_save_image));
+                            });
                 } finally {
                     liveConnections.remove(h);
                     MapNetwork.finish(h);
@@ -1710,31 +1940,52 @@ public class MapView extends View {
             }
             if (b == null)
                 throw new IOException(Language.text(getContext(), R.string.no_saved_image));
-            tiles.put(key, b);
-            failed.remove(key);
-            satelliteErrors.remove(key);
-            satelliteRetryAt.remove(key);
+            final Bitmap ready = b;
+            DownloadedMaps.publish(
+                    expected,
+                    () -> {
+                        if (!downloadCurrent(expected)) return;
+                        tiles.put(key, ready);
+                        failed.remove(key);
+                        satelliteErrors.remove(key);
+                        satelliteRetryAt.remove(key);
+                    });
         } catch (Exception e) {
-            failed.add(key);
-            satelliteErrors.put(
-                    key,
-                    e instanceof java.net.SocketTimeoutException
-                            ? Language.text(getContext(), R.string.server_not_responding)
-                            : e instanceof java.net.UnknownHostException
-                                    ? Language.text(getContext(), R.string.cannot_connect_to_server)
-                                    : e.getMessage() == null
-                                            ? Language.text(getContext(), R.string.network_error)
-                                            : e.getMessage());
-            satelliteRetryAt.put(key, android.os.SystemClock.uptimeMillis() + 10000);
-            postInvalidateDelayed(10000);
+            DownloadedMaps.publish(
+                    expected,
+                    () -> {
+                        if (!downloadCurrent(expected)) return;
+                        failed.add(key);
+                        satelliteErrors.put(
+                                key,
+                                e instanceof java.net.SocketTimeoutException
+                                        ? Language.text(
+                                                getContext(), R.string.server_not_responding)
+                                        : e instanceof java.net.UnknownHostException
+                                                ? Language.text(
+                                                        getContext(),
+                                                        R.string.cannot_connect_to_server)
+                                                : e.getMessage() == null
+                                                        ? Language.text(
+                                                                getContext(),
+                                                                R.string.network_error)
+                                                        : e.getMessage());
+                        satelliteRetryAt.put(key, android.os.SystemClock.uptimeMillis() + 10000);
+                        postInvalidateDelayed(10000);
+                    });
         } finally {
-            pending.remove(key);
+            finishTileRequest(key, expected);
             postInvalidate();
         }
     }
 
     void loadTile(String key, int z, int x, int y) {
+        loadTile(key, z, x, y, downloadGeneration);
+    }
+
+    private void loadTile(String key, int z, int x, int y, long expected) {
         try {
+            if (!downloadCurrent(expected)) return;
             Bitmap b = null;
             synchronized (this) {
                 if (offline != null)
@@ -1752,9 +2003,7 @@ public class MapView extends View {
             if (b == null && f.exists()) b = BitmapFactory.decodeFile(f.getPath());
             if (b == null && online) {
                 HttpURLConnection h =
-                        (HttpURLConnection)
-                                new URL("https://tile.openstreetmap.org/" + key + ".png")
-                                        .openConnection();
+                        mapConnection("https://tile.openstreetmap.org/" + key + ".png");
                 liveConnections.add(h);
                 MapNetwork.configure(h);
                 h.setRequestProperty("User-Agent", "MapNotes/0.11 (Android; ru.main.explorer)");
@@ -1773,27 +2022,43 @@ public class MapView extends View {
                         }
                         b = BitmapFactory.decodeByteArray(data, 0, data.length);
                         if (b != null)
-                            try (FileOutputStream out = new FileOutputStream(f)) {
-                                out.write(data);
-                            }
+                            DownloadedMaps.write(
+                                    expected,
+                                    () -> {
+                                        try (FileOutputStream out = new FileOutputStream(f)) {
+                                            out.write(data);
+                                        }
+                                    });
                     }
                 } finally {
                     liveConnections.remove(h);
                     MapNetwork.finish(h);
                 }
             }
-            if (b != null) tiles.put(key, b);
-            else {
-                failed.add(key);
-                satelliteRetryAt.put(key, android.os.SystemClock.uptimeMillis() + 10000);
-                postInvalidateDelayed(10000);
-            }
+            final Bitmap ready = b;
+            DownloadedMaps.publish(
+                    expected,
+                    () -> {
+                        if (!downloadCurrent(expected)) return;
+                        if (ready != null) tiles.put(key, ready);
+                        else {
+                            failed.add(key);
+                            satelliteRetryAt.put(
+                                    key, android.os.SystemClock.uptimeMillis() + 10000);
+                            postInvalidateDelayed(10000);
+                        }
+                    });
         } catch (Exception e) {
-            failed.add(key);
-            satelliteRetryAt.put(key, android.os.SystemClock.uptimeMillis() + 10000);
-            postInvalidateDelayed(10000);
+            DownloadedMaps.publish(
+                    expected,
+                    () -> {
+                        if (!downloadCurrent(expected)) return;
+                        failed.add(key);
+                        satelliteRetryAt.put(key, android.os.SystemClock.uptimeMillis() + 10000);
+                        postInvalidateDelayed(10000);
+                    });
         } finally {
-            pending.remove(key);
+            finishTileRequest(key, expected);
             postInvalidate();
         }
     }

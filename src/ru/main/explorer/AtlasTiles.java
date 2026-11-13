@@ -4,6 +4,8 @@ import android.graphics.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.lang.ref.WeakReference;
+import java.io.IOException;
+import java.util.function.BooleanSupplier;
 
 /** Bounded asynchronous world-pixel tiles. No worker input contains a View or mutable Way. */
 final class AtlasTiles {
@@ -17,6 +19,8 @@ final class AtlasTiles {
         final boolean area;
         final int pass, ordinal;
         final double left, right, top, bottom;
+        final int sourceLength;
+        final boolean lastSampleIsEnd;
 
         Feature(AtlasGeometry.Entry e) {
             // Entry's projected array is decoder-owned, never exposed or modified by rendering.
@@ -31,6 +35,37 @@ final class AtlasTiles {
             right = e.right;
             top = e.top;
             bottom = e.bottom;
+            sourceLength = xy.length;
+            lastSampleIsEnd = true;
+        }
+
+        Feature(
+                double[] xy,
+                String type,
+                String name,
+                String kind,
+                boolean area,
+                int pass,
+                int ordinal,
+                double left,
+                double right,
+                double top,
+                double bottom,
+                int sourceLength,
+                boolean lastSampleIsEnd) {
+            this.xy = xy;
+            this.type = type;
+            this.name = name;
+            this.kind = kind;
+            this.area = area;
+            this.pass = pass;
+            this.ordinal = ordinal;
+            this.left = left;
+            this.right = right;
+            this.top = top;
+            this.bottom = bottom;
+            this.sourceLength = sourceLength;
+            this.lastSampleIsEnd = lastSampleIsEnd;
         }
     }
 
@@ -41,7 +76,14 @@ final class AtlasTiles {
         final long retainedBytes;
         final AtlasFeatureIndex index, labels;
         final String key;
+        final String replayFamily;
         final boolean ready;
+        AtlasDiskSource disk;
+
+        Features openFeatures(double cx, double cy, double dx, double dy, int zoom)
+                throws IOException {
+            return new Features(features, disk == null ? null : disk.open(cx, cy, dx, dy, zoom));
+        }
 
         Layer(
                 double left,
@@ -58,6 +100,7 @@ final class AtlasTiles {
             this.features = Collections.unmodifiableList(new ArrayList<>(features));
             index = labels = null;
             key = "job";
+            replayFamily = null;
             ready = true;
             long bytes = 256;
             for (Feature feature : features) bytes += 128L + feature.xy.length * 8L;
@@ -86,6 +129,20 @@ final class AtlasTiles {
                 AtlasFeatureIndex labels,
                 String key,
                 boolean ready) {
+            this(left, right, top, bottom, buildingsOnly, index, labels, key, ready, null);
+        }
+
+        Layer(
+                double left,
+                double right,
+                double top,
+                double bottom,
+                boolean buildingsOnly,
+                AtlasFeatureIndex index,
+                AtlasFeatureIndex labels,
+                String key,
+                boolean ready,
+                String replayFamily) {
             this.left = left;
             this.right = right;
             this.top = top;
@@ -94,6 +151,7 @@ final class AtlasTiles {
             this.index = index;
             this.labels = labels;
             this.key = key;
+            this.replayFamily = replayFamily;
             this.ready = ready;
             this.features = index.features;
             retainedBytes = index.bytes + labels.bytes;
@@ -106,6 +164,24 @@ final class AtlasTiles {
             return Math.abs(dx) <= (right - left) / 2 + radius
                     && bottom >= cy - radius
                     && top <= cy + radius;
+        }
+    }
+
+    static final class Features implements AutoCloseable {
+        private final Iterator<Feature> memory;
+        private final AtlasDiskSource.Cursor disk;
+
+        Features(List<Feature> memory, AtlasDiskSource.Cursor disk) {
+            this.memory = memory.iterator();
+            this.disk = disk;
+        }
+
+        Feature next(BooleanSupplier cancelled) throws IOException {
+            return disk != null ? disk.next(cancelled) : memory.hasNext() ? memory.next() : null;
+        }
+
+        public void close() throws IOException {
+            if (disk != null) disk.close();
         }
     }
 
@@ -206,6 +282,11 @@ final class AtlasTiles {
             return true;
         }
 
+        boolean hasDisk() {
+            for (Layer layer : layers) if (layer.disk != null) return true;
+            return false;
+        }
+
         boolean sourcesReady(long x, long y) {
             double scale = 1 << zoom;
             double cx = (x * SIZE + SIZE / 2.0) / scale;
@@ -275,7 +356,16 @@ final class AtlasTiles {
             return image;
         }
         misses++;
-        if (!snapshot.sourcesReady(x, y)) return null;
+        if (!snapshot.sourcesReady(x, y)) {
+            MapTrace.record(
+                    MapTrace.Lane.TILE,
+                    MapTrace.Event.STATE,
+                    MapTrace.id(snapshot),
+                    snapshot.zoom,
+                    snapshot.hybrid ? 1 : 0,
+                    1);
+            return null;
+        }
         if (pending.contains(key)) {
             if (visible) {
                 Iterator<Job> iterator = prefetchJobs.iterator();
@@ -290,13 +380,20 @@ final class AtlasTiles {
             return null;
         }
         if (visible && pending.size() >= MAX_PENDING && !prefetchJobs.isEmpty())
-            release(prefetchJobs.removeLast());
+            release(prefetchJobs.removeLast(), 9);
         if (pending.size() >= MAX_PENDING) return null;
         long reservation = (SIZE + 2L * GUARD) * (SIZE + 2L * GUARD) * 4;
         if (workBytes + reservation > MAX_WORK_BYTES) return null;
         pending.add(key);
         workBytes += reservation;
         Job task = new Job(snapshot, key, x, y, generation, reservation);
+        MapTrace.record(
+                MapTrace.Lane.TILE,
+                MapTrace.Event.QUEUE,
+                MapTrace.id(task),
+                snapshot.zoom,
+                snapshot.hybrid ? 1 : 0,
+                pending.size());
         (visible ? visibleJobs : prefetchJobs).addLast(task);
         if (!draining) {
             draining = true;
@@ -330,10 +427,39 @@ final class AtlasTiles {
     }
 
     private void release(Job job) {
+        release(job, invalidReason(job) == 0 ? 8 : invalidReason(job));
+    }
+
+    private void release(Job job, int reason) {
         pending.remove(job.key);
         workBytes -= job.reservedBytes;
-        cancelled++;
+        cancel(job, reason);
         notifyAll();
+    }
+
+    private void cancel(Job job, int reason) {
+        cancelled++;
+        MapTrace.record(
+                MapTrace.Lane.TILE,
+                MapTrace.Event.CANCEL,
+                MapTrace.id(job),
+                reason,
+                job.zoom,
+                job.color ? 1 : 0);
+    }
+
+    private int invalidReason(Job job) {
+        return closed
+                ? 1
+                : generation != job.token
+                        ? 2
+                        : active == null
+                                ? 0
+                                : active.zoom != job.zoom
+                                        ? 3
+                                        : !job.key.equals(active.tileKey(job.x, job.y, job.color))
+                                                ? 4
+                                                : 0;
     }
 
     private void reprioritize() {
@@ -370,9 +496,17 @@ final class AtlasTiles {
                 }
             }
             try {
+                long traceStart = System.nanoTime();
+                MapTrace.record(
+                        MapTrace.Lane.TILE,
+                        MapTrace.Event.START,
+                        MapTrace.id(job),
+                        job.zoom,
+                        job.color ? 1 : 0,
+                        0);
                 synchronized (this) {
                     if (!job.valid()) {
-                        cancelled++;
+                        cancel(job, invalidReason(job));
                         continue;
                     }
                 }
@@ -386,7 +520,7 @@ final class AtlasTiles {
                 }
                 if (source == null) {
                     synchronized (this) {
-                        cancelled++;
+                        cancel(job, 5);
                     }
                     continue;
                 }
@@ -399,7 +533,7 @@ final class AtlasTiles {
                             || !job.valid()
                             || workBytes - job.reservedBytes + prepared.workBytes
                                     > MAX_WORK_BYTES) {
-                        cancelled++;
+                        cancel(job, !job.valid() ? invalidReason(job) : prepared == null ? 6 : 7);
                         continue;
                     }
                     workBytes += prepared.workBytes - job.reservedBytes;
@@ -408,7 +542,7 @@ final class AtlasTiles {
                 Bitmap result = render(prepared, job.x, job.y);
                 synchronized (this) {
                     if (!job.valid()) {
-                        cancelled++;
+                        cancel(job, invalidReason(job));
                         continue;
                     }
                     long size = result.getAllocationByteCount();
@@ -420,13 +554,37 @@ final class AtlasTiles {
                     cache.put(job.key, result);
                     bytes += size;
                     completed++;
+                    MapTrace.record(
+                            MapTrace.Lane.TILE,
+                            MapTrace.Event.PUBLISH,
+                            MapTrace.id(job),
+                            job.zoom,
+                            job.color ? 1 : 0,
+                            System.nanoTime() - traceStart);
                 }
             } catch (OutOfMemoryError ignored) {
+                synchronized (this) {
+                    cancel(job, 10);
+                }
+                MapTrace.record(
+                        MapTrace.Lane.TILE,
+                        MapTrace.Event.OOM,
+                        MapTrace.id(job),
+                        job.zoom,
+                        job.color ? 1 : 0,
+                        0);
                 // Не публикуем неполный тайл; композиция раскрытия выполняется снаружи.
             } finally {
                 synchronized (this) {
                     pending.remove(job.key);
                     workBytes -= job.reservedBytes;
+                    MapTrace.record(
+                            MapTrace.Lane.TILE,
+                            MapTrace.Event.FINISH,
+                            MapTrace.id(job),
+                            pending.size(),
+                            workBytes,
+                            closed ? 1 : 0);
                     notifyAll();
                     if (!closed && changed != null) changed.run();
                 }
@@ -545,21 +703,32 @@ final class AtlasTiles {
         Snapshot old = previousZoom;
         if (old == null || old.illustrated != current.illustrated || old.density != current.density)
             return coverage;
-        // Источник должен совпадать; удалённую/изменённую геометрию не переигрываем.
-        if (old.layers.size() != current.layers.size()) return coverage;
-        for (int i = 0; i < old.layers.size(); i++)
-            if (!old.layers.get(i).key.equals(current.layers.get(i).key)) return coverage;
         double factor = Math.pow(2, current.zoom - old.zoom);
         if (factor < .5 || factor > 2) return coverage;
         double oldScale = 1 << old.zoom;
         double oldOx = cx * oldScale - width / (2 * factor);
         double oldOy = cy * oldScale - height / (2 * factor);
         double left = tx * SIZE - ox, top = ty * SIZE - oy;
+        AtlasCoverage safe = new AtlasCoverage();
+        safe.append(
+                new RectF((float) left, (float) top, (float) (left + SIZE), (float) (top + SIZE)));
+        AtlasReplay.restrict(
+                safe,
+                AtlasReplay.inputs(old.layers),
+                AtlasReplay.inputs(current.layers),
+                cx,
+                cy,
+                current.zoom,
+                width,
+                height,
+                (old.zoom < 13) != (current.zoom < 13));
+        if (safe.isEmpty()) return coverage;
         long x0 = (long) Math.floor((oldOx + left / factor) / SIZE);
         long y0 = (long) Math.floor((oldOy + top / factor) / SIZE);
         long x1 = (long) Math.floor((oldOx + (left + SIZE) / factor) / SIZE);
         long y1 = (long) Math.floor((oldOy + (top + SIZE) / factor) / SIZE);
         int save = canvas.save();
+        safe.clip(canvas);
         canvas.clipRect((float) left, (float) top, (float) (left + SIZE), (float) (top + SIZE));
         Paint p = new Paint(Paint.FILTER_BITMAP_FLAG);
         for (long y = y0; y <= y1; y++)
@@ -592,7 +761,7 @@ final class AtlasTiles {
                                 (float) (((y + 1) * SIZE - oldOy) * factor));
                 if (covered.intersect(
                         (float) left, (float) top, (float) (left + SIZE), (float) (top + SIZE)))
-                    coverage.append(covered);
+                    coverage.append(safe.intersect(covered));
             }
         canvas.restoreToCount(save);
         return coverage;

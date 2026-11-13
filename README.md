@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/dotliberty/MapNotes/releases/tag/v1.3.2">Download 1.3.2</a> ·
+  <a href="https://github.com/dotliberty/MapNotes/releases/tag/v1.3.2.2">Download 1.3.2.2</a> ·
   <a href="#your-first-walk">Get started</a> ·
-  <a href="docs/1.3.2-RELEASE.md">Release notes</a> ·
+  <a href="docs/1.3.2.2-RELEASE.md">Release notes</a> ·
   <a href="README.ru.md">Русский</a>
 </p>
 
@@ -57,8 +57,8 @@ These are **native Canvas renders of the application in Robolectric**, not scree
 
 ## Install or update
 
-1. Open the [1.3.2 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.3.2).
-2. Download **`MapNotes-1.3.2.apk`**. `SHA256SUMS` is available alongside it for checking the download's integrity.
+1. Open the [1.3.2.2 release](https://github.com/dotliberty/MapNotes/releases/tag/v1.3.2.2).
+2. Download **`MapNotes-1.3.2.2.apk`**. `SHA256SUMS` is available alongside it for checking the download's integrity.
 3. Open the APK on your Android device and allow installation from your browser/file manager if prompted.
 
 **Already using the official MapNotes app? Install the new APK over it. Do not uninstall the app or clear its storage.** The official release keeps the same package and signing certificate. An APK with `-debug` in its name is a separate test app, not an update to the official installation.
@@ -104,9 +104,9 @@ Routes, original photos and notes are stored on the device. MapNotes does not im
 
 ## Status and limitations
 
-**1.3.2 is a major app-optimization update:** smoother map gestures and zoom transitions, background preparation of dense atlas scenes, reusable ready coverage and a lighter on-map photo layout. It includes the mixed journeys and spawn-zone features from earlier releases. The owner approved stable distribution after testing the separate test app on a phone; activity recognition and personalization remain experimental in accuracy.
+**1.3.2.2 improves downloaded-map availability and adds map cleanup:** large sources are streamed in the background, overview/detail transitions retain valid ready coverage, and route lines are prepared independently of the reveal mask. **Map menu → Delete all downloaded areas** clears downloaded map data while retaining your journal and connected MBTiles, then pauses map networking. The owner approved stable distribution after testing the matching mask-cancel APK on a phone. Mixed journeys and spawn zones remain available; activity recognition and personalization remain experimental in accuracy.
 
-The 1.3.2 release configuration passed **408 Android/JVM tests**, with **3 external-data checks skipped** and no failures; release-build evidence is recorded in [1.3.2 verification](docs/1.3.2-VERIFICATION.md). Newly visited detail can still arrive asynchronously while moving. Local Canvas tests and the owner's phone feedback do not establish guaranteed frame rates across devices or a measured total memory/battery budget.
+The 1.3.2.2 release configuration passed **469 Android/JVM tests**, with **3 external-data checks skipped** and no failures, in both implementation and independent review runs; evidence is recorded in [1.3.2.2 verification](docs/1.3.2.2-VERIFICATION.md). Newly visited detail can still arrive asynchronously while moving. Vector downloads across overlapping areas can still be repeated; cross-area download reuse is planned separately. Local Canvas tests and the owner's phone feedback do not establish guaranteed frame rates across devices or a measured total memory/battery budget.
 
 - GPS accuracy and background recording depend on reception, Android and the device vendor.
 - Lens selection, zoom, photo sizes and camera light depend on advertised hardware support.
@@ -122,7 +122,7 @@ The app uses Java/Kotlin and Android APIs, with one Gradle application/test conf
 
 - [Build and test](docs/BUILDING.md)
 - [Code style and formatting checks](docs/FORMATTING.md)
-- [1.3.2 release notes](docs/1.3.2-RELEASE.md) and [verification](docs/1.3.2-VERIFICATION.md)
+- [1.3.2.2 release notes](docs/1.3.2.2-RELEASE.md) and [verification](docs/1.3.2.2-VERIFICATION.md)
 - [Movement implementation/verification](docs/1.3-VERIFICATION.md)
 - [UI verification](docs/1.2.4-DESIGN.md) and [camera-switch regressions](docs/1.2.4-CAMERA-SAFETY.md)
 - [Experimental imagery-assisted tracing](docs/IMAGERY-TRACE.md) — separate beta feature; its earlier version notes are historical.

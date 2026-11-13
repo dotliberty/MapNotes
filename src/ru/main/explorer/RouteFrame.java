@@ -22,6 +22,7 @@ final class RouteFrame {
     java.util.function.Consumer<RouteFrame> progress;
     private long lastProgress;
     java.util.function.BooleanSupplier cancelled = () -> false;
+    private final long downloadGeneration = DownloadedMaps.generation();
     final Path reveal = new Path(), line = new Path();
     int samples, vertices, maskVertices;
     android.util.LruCache<String, double[]> cache;
@@ -59,9 +60,51 @@ final class RouteFrame {
         return (float) ((MapView.y(lat) - cy) * (1 << zoom) + height / 2.0);
     }
 
+    /** Только линия: ни чтения стен, ни RevealCache, ни публикации раскрытия. */
+    void buildLineOnly() {
+        rasterScale =
+                (float) Math.min(1, Math.sqrt(262144.0 / Math.max(1, (double) width * height)));
+        lineImage =
+                Bitmap.createBitmap(
+                        Math.max(1, Math.round(width * rasterScale)),
+                        Math.max(1, Math.round(height * rasterScale)),
+                        Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(lineImage);
+        canvas.scale(rasterScale, rasterScale);
+        Paint paint = new Paint(3);
+        paint.setStrokeCap(Paint.Cap.ROUND);
+        double[] previous = null;
+        for (double[] point : points) {
+            if (Thread.currentThread().isInterrupted() || cancelled.getAsBoolean()) return;
+            if (previous != null && MapView.connects(previous, point)) {
+                float ax = sx(previous[1]),
+                        ay = sy(previous[0]),
+                        bx = sx(point[1]),
+                        by = sy(point[0]);
+                if (Math.max(ax, bx) >= -8
+                        && Math.min(ax, bx) <= width + 8
+                        && Math.max(ay, by) >= -8
+                        && Math.min(ay, by) <= height + 8) {
+                    paint.setStrokeWidth(5 * lineDensity);
+                    paint.setColor(0xfff7efd9);
+                    canvas.drawLine(ax, ay, bx, by, paint);
+                    paint.setStrokeWidth(2 * lineDensity);
+                    paint.setColor(0xffb09a69);
+                    canvas.drawLine(ax, ay, bx, by, paint);
+                    vertices += 2;
+                }
+            }
+            previous = point;
+        }
+        points = new ArrayList<>();
+        complete = true;
+    }
+
     void build() {
-        if (diskCache != null) diskCache.begin();
+        boolean success = false;
         try {
+            checkCancelled();
+            if (diskCache != null) diskCache.begin();
             if (raster) {
                 rasterScale =
                         (float)
@@ -81,7 +124,7 @@ final class RouteFrame {
             if (current != null) add(current[0], current[1]);
             double[] previous = null;
             for (double[] p : points) {
-                if (Thread.currentThread().isInterrupted() || cancelled.getAsBoolean()) return;
+                checkCancelled();
                 float px = sx(p[1]), py = sy(p[0]);
                 boolean connected = previous != null && MapView.connects(previous, p);
                 if (connected) {
@@ -138,20 +181,27 @@ final class RouteFrame {
                 }
                 previous = p;
             }
-            complete = true;
+            checkCancelled();
+            success = true;
             points = new ArrayList<>();
             atlas = null;
             world = null;
             cache = null;
         } finally {
-            if (diskCache != null) diskCache.end();
+            if (diskCache != null) diskCache.end(success);
             diskCache = null;
         }
+        complete = true;
+    }
+
+    private void checkCancelled() {
+        if (Thread.currentThread().isInterrupted() || cancelled.getAsBoolean())
+            throw new java.util.concurrent.CancellationException("Route frame cancelled");
     }
 
     void add(double lat, double lon) {
-        if (cancelled.getAsBoolean() || !raster && (samples >= 1024 || maskVertices >= 100000))
-            return;
+        checkCancelled();
+        if (!raster && (samples >= 1024 || maskVertices >= 100000)) return;
         double mpp = 156543.03392 * Math.cos(Math.toRadians(lat)) / (1 << zoom);
         float px = sx(lon), py = sy(lat), r = (float) (Visibility.RADIUS / mpp);
         if (px + r < 0 || px - r > width || py + r < 0 || py - r > height) return;
@@ -179,12 +229,20 @@ final class RouteFrame {
                             : atlas == null
                                     ? Collections.emptyList()
                                     : atlas.buildingsNear(lat, lon, Visibility.RADIUS);
-            if (cancelled.getAsBoolean()) return;
+            checkCancelled();
             shape = Visibility.polygon(lat, lon, Visibility.RADIUS, walls);
-            if (cancelled.getAsBoolean()) return;
+            checkCancelled();
             if (diskCache != null) diskCache.write(shapeKey, shape);
         }
-        if (cache != null) cache.put(shapeKey, shape);
+        checkCancelled();
+        if (cache != null) {
+            final double[] cachedShape = shape;
+            DownloadedMaps.publish(
+                    downloadGeneration,
+                    () -> {
+                        if (!cancelled.getAsBoolean()) cache.put(shapeKey, cachedShape);
+                    });
+        }
         if (shape.length == 0 || !raster && maskVertices + shape.length / 2 > 100000) return;
         maskVertices += shape.length / 2;
         Path area = new Path();

@@ -32,6 +32,22 @@ final class AtlasGeometry {
                 xy[i + 1] = MapView.y(way.coords[i]);
             }
         }
+
+        Entry(AtlasTiles.Feature feature) {
+            way = new OfflineAtlas.Way();
+            way.type = type = feature.type;
+            way.name = name = feature.name;
+            way.kind = kind = feature.kind;
+            way.area = area = feature.area;
+            way.coords = new double[0];
+            ordinal = feature.ordinal;
+            pass = feature.pass;
+            xy = feature.xy;
+            left = feature.left;
+            right = feature.right;
+            top = feature.top;
+            bottom = feature.bottom;
+        }
     }
 
     private static final class Node {
@@ -95,6 +111,22 @@ final class AtlasGeometry {
         }
         root = new Node(entries, 0, entries.length);
         bytes = (int) Math.min(Integer.MAX_VALUE, size);
+    }
+
+    /** Для compact cache создаются только видимые compatibility entries, без полной raw-копии. */
+    AtlasGeometry(OfflineAtlas.IndexedWays source, MapView map) {
+        this.source = source;
+        double scale = 1 << map.zoom;
+        List<AtlasTiles.Feature> candidates =
+                source.tileIndex.query(
+                        map.cx,
+                        map.cy,
+                        (map.getWidth() / 2.0 + 1) / scale,
+                        (map.getHeight() / 2.0 + 1) / scale);
+        entries = new Entry[candidates.size()];
+        for (int i = 0; i < entries.length; i++) entries[i] = new Entry(candidates.get(i));
+        root = new Node(entries, 0, entries.length);
+        bytes = (int) Math.min(Integer.MAX_VALUE, source.estimatedBytes + entries.length * 256L);
     }
 
     List<Entry> candidates(MapView map) {
@@ -178,13 +210,13 @@ final class AtlasGeometry {
             double scale = 1 << map.zoom;
             for (Entry entry : geometry.candidates(map)) {
                 OfflineAtlas.Way w = entry.way;
-                float l = map.screenX(w.west), r = map.screenX(w.east);
+                float l = screenX(entry.left, map), r = screenX(entry.right, map);
                 float t = (float) ((entry.top - map.cy) * scale + map.getHeight() / 2.0);
                 float b = (float) ((entry.bottom - map.cy) * scale + map.getHeight() / 2.0);
                 if (r < 0 || l > map.getWidth() || b < 0 || t > map.getHeight()) continue;
                 if (entry.pass == 2 && !MapDetail.roadVisible(w.kind, map.zoom)) continue;
                 if (entry.pass == 1 && !MapDetail.buildingVisible(map.zoom, r - l, b - t)) continue;
-                if (vertices + Math.min(4096, w.coords.length / 2) > 80000) continue;
+                if (vertices + Math.min(4096, entry.xy.length / 2) > 80000) continue;
                 Shape shape = new Shape(entry, map);
                 shapes.add(shape);
                 vertices += shape.vertices;

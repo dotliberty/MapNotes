@@ -52,6 +52,20 @@ public final class MapPack {
 
         void changed();
 
+        default void prepare(File directory, File satellite) throws IOException {
+            directory.mkdirs();
+            satellite.mkdirs();
+        }
+
+        default void save(File file, byte[] bytes, boolean gzip) throws IOException {
+            MapPack.write(file, bytes, gzip);
+        }
+
+        default void discard(File file) throws IOException {
+            if (file.exists() && !file.delete())
+                throw new IOException("Cannot discard corrupt map data");
+        }
+
         void waitMillis(long millis) throws Exception;
 
         void validateImage(byte[] image) throws Exception;
@@ -76,8 +90,7 @@ public final class MapPack {
     }
 
     public void run() throws Exception {
-        directory.mkdirs();
-        satellite.mkdirs();
+        transfer.prepare(directory, satellite);
         File manifest = new File(directory, "pack.json");
         JSONObject info =
                 new JSONObject()
@@ -85,7 +98,7 @@ public final class MapPack {
                         .put("maxZoom", plan.maxZoom())
                         .put("complete", false)
                         .put("sideKm", Math.round((plan.north - plan.south) * 111195.08 / 1000));
-        write(manifest, info.toString().getBytes("UTF-8"), false);
+        transfer.save(manifest, info.toString().getBytes("UTF-8"), false);
         List<RegionPlan.Cell> cells = plan.cells();
         for (int i = 0; i < cells.size(); i++) {
             transfer.check();
@@ -107,13 +120,13 @@ public final class MapPack {
                     transfer.validateImage(read(file, 2000000));
                     valid = true;
                 } catch (Exception invalid) {
-                    file.delete();
+                    transfer.discard(file);
                 }
             if (!valid) {
                 byte[] image =
                         retry(RegionPlan.satelliteUrl(tile[0], tile[1], tile[2]), null, 2000000);
                 transfer.validateImage(image);
-                write(file, image, false);
+                transfer.save(file, image, false);
                 transfer.waitMillis(180);
             }
             done++;
@@ -129,7 +142,7 @@ public final class MapPack {
         }
         transfer.check();
         info.put("complete", true);
-        write(manifest, info.toString().getBytes("UTF-8"), false);
+        transfer.save(manifest, info.toString().getBytes("UTF-8"), false);
         transfer.changed();
     }
 
@@ -187,8 +200,8 @@ public final class MapPack {
                 vectorDone++;
                 return;
             } catch (Exception corrupt) {
-                data.delete();
-                meta.delete();
+                transfer.discard(data);
+                transfer.discard(meta);
             }
         }
         if (split.exists()) {
@@ -226,14 +239,14 @@ public final class MapPack {
                 if (root.has("remark")) throw new TooLargeException();
                 root.getJSONArray("elements");
                 root.put("mapnotes_bounds", bounds(cell.south, cell.west, cell.north, cell.east));
-                write(data, root.toString().getBytes("UTF-8"), true);
+                transfer.save(data, root.toString().getBytes("UTF-8"), true);
                 transfer.waitMillis(1000);
             }
             JSONObject index =
                     new JSONObject()
                             .put("bounds", bounds(cell.south, cell.west, cell.north, cell.east))
                             .put("file", data.getName());
-            write(meta, index.toString().getBytes("UTF-8"), false);
+            transfer.save(meta, index.toString().getBytes("UTF-8"), false);
             vectorDone++;
             if (vectorDone % 4 == 0) transfer.changed();
         } catch (TooLargeException e) {
@@ -241,7 +254,7 @@ public final class MapPack {
                 throw new IOException(
                         Messages.text(
                                 "map_too_dense_completed_sections_are_saved_try_again_later"));
-            write(split, new byte[] {1}, false);
+            transfer.save(split, new byte[] {1}, false);
             for (RegionPlan.Cell child : cell.split()) vectorCell(child);
         }
     }
@@ -295,7 +308,7 @@ public final class MapPack {
                                 bounds(plan.south, plan.west, plan.north, plan.east))
                         .put("mapnotes_overview", true)
                         .put("elements", ways);
-        write(target, overview.toString().getBytes("UTF-8"), true);
+        transfer.save(target, overview.toString().getBytes("UTF-8"), true);
     }
 
     public static JSONArray bounds(double south, double west, double north, double east)

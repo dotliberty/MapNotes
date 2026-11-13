@@ -18,10 +18,13 @@ final class BuildingFetch {
             java.util.Set<HttpURLConnection> connections,
             java.util.function.BooleanSupplier allowed)
             throws Exception {
+        final long generation = DownloadedMaps.generation();
+        java.util.function.BooleanSupplier current =
+                () -> allowed.getAsBoolean() && DownloadedMaps.current(generation);
         Overpass.fetch(
                 endpoint -> {
-                    if (!allowed.getAsBoolean()) throw new MapPack.PausedException();
-                    fetchAt(context, lat, lon, endpoint, connections, allowed);
+                    if (!current.getAsBoolean()) throw new MapPack.PausedException();
+                    fetchAt(context, lat, lon, endpoint, connections, current);
                     return null;
                 });
     }
@@ -34,6 +37,9 @@ final class BuildingFetch {
             java.util.Set<HttpURLConnection> connections,
             java.util.function.BooleanSupplier allowed)
             throws Exception {
+        long generation = DownloadedMaps.generation();
+        if (!allowed.getAsBoolean() || !DownloadedMaps.current(generation))
+            throw new MapPack.PausedException();
         RegionPlan plan = new RegionPlan(lat, lon, 250);
         String query =
                 "[out:json][timeout:25];(way[building]("
@@ -87,14 +93,21 @@ final class BuildingFetch {
                     new JSONArray(new double[] {plan.south, plan.west, plan.north, plan.east}));
             root.put("mapnotes_buildings_only", false);
             File dir = new File(context.getFilesDir(), "visibility");
-            dir.mkdirs();
             File file = new File(dir, System.currentTimeMillis() + ".json"),
                     temp = new File(dir, "buildings.part");
-            try (FileOutputStream fileOut = new FileOutputStream(temp)) {
-                fileOut.write(root.toString().getBytes("UTF-8"));
-            }
-            if (!temp.renameTo(file))
-                throw new IOException(Language.text(context, R.string.could_not_save_buildings));
+            DownloadedMaps.write(
+                    generation,
+                    () -> {
+                        if (!allowed.getAsBoolean())
+                            throw new IOException(Language.text(context, R.string.network_paused));
+                        dir.mkdirs();
+                        try (FileOutputStream fileOut = new FileOutputStream(temp)) {
+                            fileOut.write(root.toString().getBytes("UTF-8"));
+                        }
+                        if (!temp.renameTo(file))
+                            throw new IOException(
+                                    Language.text(context, R.string.could_not_save_buildings));
+                    });
         } finally {
             connections.remove(h);
             MapNetwork.finish(h);

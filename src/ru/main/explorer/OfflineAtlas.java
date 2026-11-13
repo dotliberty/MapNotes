@@ -2,12 +2,17 @@ package ru.main.explorer;
 
 import android.content.*;
 import android.graphics.*;
+import android.util.JsonReader;
+import android.util.JsonToken;
 import org.json.*;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /** Disk index and bounded geometry cache: large packs are never decoded as one JSON. */
-public class OfflineAtlas {
+public class OfflineAtlas implements MapTrace.SourceProvider {
+    final long downloadGeneration = DownloadedMaps.generation();
+
     static final class IndexedWays extends ArrayList<Way> {
         final HashMap<Long, ArrayList<Way>> grid = new HashMap<>();
         final ArrayList<Way> large = new ArrayList<>();
@@ -16,6 +21,8 @@ public class OfflineAtlas {
         AtlasFeatureIndex tileIndex, labelIndex;
         final long tileIdentity = TILE_IDENTITIES.incrementAndGet();
         int estimatedBytes;
+        boolean compacted;
+        AtlasDiskSource disk;
 
         static long key(int x, int y) {
             return ((long) x << 32) ^ (y & 0xffffffffL);
@@ -54,10 +61,38 @@ public class OfflineAtlas {
                     renderGeometry.bytes
                             + 16L * large.size()
                             + 128L * frozen.size()
-                            + tileIndex.bytes
-                            + labelIndex.bytes;
+                            + tileIndex.structureBytes
+                            + labelIndex.structureBytes;
             for (ArrayList<Way> bucket : grid.values()) size += 112L + bucket.size() * 16L;
             estimatedBytes = (int) Math.min(Integer.MAX_VALUE, size);
+        }
+
+        IndexedWays compact() {
+            if (compacted) return this;
+            IndexedWays result = new IndexedWays();
+            result.compacted = true;
+            result.tileFeatures = tileFeatures;
+            result.tileIndex = tileIndex;
+            result.labelIndex = labelIndex;
+            result.grid.putAll(grid);
+            result.large.addAll(large);
+            long size = 1024L + tileIndex.structureBytes + labelIndex.structureBytes;
+            for (AtlasTiles.Feature feature : tileFeatures)
+                size +=
+                        128L
+                                + feature.xy.length * 8L
+                                + feature.name.length() * 2L
+                                + feature.kind.length() * 2L;
+            // Raw lat/lon остаются для всех стен. Для дорог достаточно immutable projected xy.
+            for (Way way : this)
+                if (way.area && "building".equals(way.type)) {
+                    result.add(way);
+                    size += 112L + way.coords.length * 8L;
+                }
+            for (ArrayList<Way> bucket : grid.values()) size += 112L + bucket.size() * 16L;
+            size += large.size() * 16L;
+            result.estimatedBytes = (int) Math.min(Integer.MAX_VALUE, size);
+            return result;
         }
 
         Collection<Way> near(double south, double west, double north, double east) {
@@ -92,16 +127,111 @@ public class OfflineAtlas {
         double south, west, north, east;
         File source;
         long stamp;
+        String packKey;
         ArrayList<Way> eager;
     }
 
     final ArrayList<Area> areas = new ArrayList<>();
+    private ArrayList<AreaSignature> replayCatalog = new ArrayList<>();
+    private Map<String, String> replayFamilyKeys = Collections.emptyMap();
+
+    private static final class AreaSignature {
+        final java.lang.ref.WeakReference<Area> area;
+        final java.lang.ref.WeakReference<ArrayList<Way>> eager;
+        final boolean hadEager, overview, buildingsOnly, legacy;
+        final String path, pack;
+        final long stamp;
+        final double south, west, north, east;
+
+        AreaSignature(Area a) {
+            area = new java.lang.ref.WeakReference<>(a);
+            eager = new java.lang.ref.WeakReference<>(a.eager);
+            hadEager = a.eager != null;
+            path = a.source == null ? null : a.source.getPath();
+            pack = a.packKey;
+            stamp = a.stamp;
+            south = a.south;
+            west = a.west;
+            north = a.north;
+            east = a.east;
+            overview = a.overview;
+            buildingsOnly = a.buildingsOnly;
+            legacy = a.legacy;
+        }
+
+        boolean matches(Area a) {
+            return area.get() == a
+                    && Objects.equals(path, a.source == null ? null : a.source.getPath())
+                    && Objects.equals(pack, a.packKey)
+                    && stamp == a.stamp
+                    && south == a.south
+                    && west == a.west
+                    && north == a.north
+                    && east == a.east
+                    && overview == a.overview
+                    && buildingsOnly == a.buildingsOnly
+                    && legacy == a.legacy
+                    && hadEager == (a.eager != null)
+                    && eager.get() == a.eager;
+        }
+    }
+
+    private Map<String, String> replayFamilies() {
+        boolean same = replayCatalog.size() == areas.size();
+        if (same)
+            for (int i = 0; i < areas.size(); i++)
+                if (!replayCatalog.get(i).matches(areas.get(i))) {
+                    same = false;
+                    break;
+                }
+        if (same) return replayFamilyKeys;
+        HashMap<String, StringBuilder> families = new HashMap<>();
+        ArrayList<AreaSignature> catalog = new ArrayList<>();
+        for (Area a : areas) {
+            catalog.add(new AreaSignature(a));
+            if (a.packKey == null) continue;
+            families.computeIfAbsent(a.packKey, keyPart -> new StringBuilder(keyPart))
+                    .append('|')
+                    .append(a.source.getPath())
+                    .append(':')
+                    .append(a.stamp)
+                    .append(':')
+                    .append(a.south)
+                    .append(':')
+                    .append(a.west)
+                    .append(':')
+                    .append(a.north)
+                    .append(':')
+                    .append(a.east)
+                    .append(':')
+                    .append(a.overview)
+                    .append(':')
+                    .append(a.buildingsOnly)
+                    .append(':')
+                    .append(a.eager == null ? 0 : System.identityHashCode(a.eager));
+        }
+        HashMap<String, String> keys = new HashMap<>();
+        for (Map.Entry<String, StringBuilder> entry : families.entrySet())
+            keys.put(entry.getKey(), "pack:" + entry.getValue());
+        replayCatalog = catalog;
+        replayFamilyKeys = keys;
+        return keys;
+    }
+
     final Paint paint = new Paint(3);
     private int count;
     private final boolean async;
     private final Runnable changed;
     private final java.util.concurrent.ExecutorService loader;
     private final Set<String> pending = Collections.synchronizedSet(new HashSet<>());
+    private final Map<String, IndexedWays> diskGeometry =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private final Set<String> failedGeometry = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final Set<String> importingGeometry =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final Map<String, MapTrace.SourceState> sourceOutcomes =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private final File geometryDirectory;
     private static final Typeface LABEL_FONT = Typeface.create("serif", Typeface.NORMAL);
     int lastLabels, lastVertices;
     int preparedFrames;
@@ -111,6 +241,7 @@ public class OfflineAtlas {
     int geometryRequests;
     int loadingLayers;
     volatile int geometryLoads;
+    volatile int geometryStreams;
     final AtlasRasterCache raster = new AtlasRasterCache();
     final AtlasTiles tiles;
     final AtlasViewport viewport;
@@ -136,7 +267,7 @@ public class OfflineAtlas {
             new android.util.LruCache<String, ArrayList<Way>>(CacheBudget.geometry()) {
                 protected int sizeOf(String key, ArrayList<Way> ways) {
                     int size = 0;
-                    if (ways instanceof IndexedWays && ((IndexedWays) ways).renderGeometry != null)
+                    if (ways instanceof IndexedWays && ((IndexedWays) ways).estimatedBytes > 0)
                         return ((IndexedWays) ways).estimatedBytes;
                     for (Way w : ways) size += w.coords.length * 8 + 96;
                     return Math.max(1, size);
@@ -154,6 +285,7 @@ public class OfflineAtlas {
     public OfflineAtlas(Context context, boolean async, Runnable changed, Runnable tileChanged) {
         this.async = async;
         this.changed = changed;
+        geometryDirectory = context.getCacheDir();
         tiles = new AtlasTiles(tileChanged);
         viewport = new AtlasViewport(tileChanged);
         loader = async ? java.util.concurrent.Executors.newSingleThreadExecutor() : null;
@@ -165,11 +297,8 @@ public class OfflineAtlas {
             Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
             for (File file : files)
                 try {
-                    JSONObject root = new JSONObject(new String(read(file), "UTF-8"));
-                    if (root.has("remark")) continue;
-                    Area a = area(root.getJSONArray("mapnotes_bounds"), file);
-                    a.buildingsOnly = root.optBoolean("mapnotes_buildings_only", false);
-                    a.legacy = true;
+                    Area a = legacyArea(file);
+                    if (a == null) continue;
                     boolean redundant = false;
                     for (Area old : areas)
                         if (old.south <= a.south
@@ -186,7 +315,11 @@ public class OfflineAtlas {
                 }
         }
         File[] packs = new File(context.getFilesDir(), "packs").listFiles(File::isDirectory);
-        if (packs == null) return;
+        if (packs == null) {
+            MapTrace.registerSources(this);
+            DownloadedMaps.register(this);
+            return;
+        }
         for (File pack : packs)
             try {
                 File manifest = new File(pack, "pack.json");
@@ -194,11 +327,22 @@ public class OfflineAtlas {
                 JSONObject root =
                         new JSONObject(new String(MapPack.read(manifest, 65536), "UTF-8"));
                 JSONArray bounds = root.getJSONArray("bounds");
+                String packKey =
+                        manifest.getPath()
+                                + ":"
+                                + manifest.lastModified()
+                                + ":"
+                                + manifest.length()
+                                + ":"
+                                + bounds
+                                + ":"
+                                + root.optBoolean("complete");
                 if (root.optBoolean("complete")) count++;
                 File overview = new File(pack, "overview.json.gz");
                 if (overview.exists()) {
                     Area a = area(bounds, overview);
                     a.overview = true;
+                    a.packKey = packKey;
                     areas.add(a);
                 }
                 File[] indexes = pack.listFiles((d, n) -> n.endsWith(".meta"));
@@ -207,10 +351,53 @@ public class OfflineAtlas {
                         JSONObject meta =
                                 new JSONObject(new String(MapPack.read(index, 65536), "UTF-8"));
                         File data = new File(pack, meta.getString("file"));
-                        if (data.exists()) areas.add(area(meta.getJSONArray("bounds"), data));
+                        if (data.exists()) {
+                            Area a = area(meta.getJSONArray("bounds"), data);
+                            a.packKey = packKey;
+                            areas.add(a);
+                        }
                     }
             } catch (Exception ignored) {
             }
+        MapTrace.registerSources(this);
+        DownloadedMaps.register(this);
+    }
+
+    @Override
+    public void appendSourceStates(StringBuilder text, long nanos) {
+        if (closed) return;
+        // snapshot не меняет recency LRU; здесь нет file IO и общего monitor map/walls.
+        Map<String, ArrayList<Way>> memory = geometry.snapshot();
+        for (Area area : areas) {
+            if (area.source == null) continue;
+            String path = area.source.getPath();
+            for (MapTrace.SourceVariant variant : MapTrace.SourceVariant.values()) {
+                String key =
+                        path
+                                + (variant == MapTrace.SourceVariant.OVERVIEW
+                                        ? "#o"
+                                        : variant == MapTrace.SourceVariant.WALLS ? "#walls" : "");
+                boolean ready =
+                        area.eager != null
+                                || memory.containsKey(key)
+                                || diskGeometry.containsKey(key);
+                if (variant == MapTrace.SourceVariant.WALLS)
+                    ready |= memory.containsKey(path) || diskGeometry.containsKey(path);
+                MapTrace.SourceState state =
+                        ready
+                                ? MapTrace.SourceState.READY
+                                : importingGeometry.contains(key)
+                                        ? MapTrace.SourceState.IMPORTING
+                                        : pending.contains(key)
+                                                ? MapTrace.SourceState.QUEUED
+                                                : sourceOutcomes.getOrDefault(
+                                                        key,
+                                                        failedGeometry.contains(key)
+                                                                ? MapTrace.SourceState.FAILED
+                                                                : MapTrace.SourceState.MISSING);
+                MapTrace.sourceState(text, nanos, MapTrace.id(area), variant, state, area.stamp);
+            }
+        }
     }
 
     static Area area(JSONArray bounds, File file) throws Exception {
@@ -224,6 +411,45 @@ public class OfflineAtlas {
         return a;
     }
 
+    /** Читаются только четыре bounds и флаги; elements/неизвестные поля не материализуются. */
+    static Area legacyArea(File file) throws Exception {
+        JSONArray bounds = null;
+        boolean buildingsOnly = false, remark = false;
+        try (JsonReader json =
+                new JsonReader(
+                        new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            json.beginObject();
+            while (json.hasNext()) {
+                String name = json.nextName();
+                if ("mapnotes_bounds".equals(name)) {
+                    bounds = new JSONArray();
+                    json.beginArray();
+                    for (int i = 0; i < 4; i++) bounds.put(json.nextDouble());
+                    while (json.hasNext()) json.skipValue();
+                    json.endArray();
+                } else if ("mapnotes_buildings_only".equals(name)) {
+                    JsonToken token = json.peek();
+                    if (token == JsonToken.BOOLEAN) buildingsOnly = json.nextBoolean();
+                    else if (token == JsonToken.STRING)
+                        buildingsOnly = Boolean.parseBoolean(json.nextString());
+                    else {
+                        json.skipValue();
+                        buildingsOnly = false;
+                    }
+                } else {
+                    if ("remark".equals(name)) remark = true;
+                    json.skipValue();
+                }
+            }
+            json.endObject();
+        }
+        if (remark || bounds == null) return null;
+        Area result = area(bounds, file);
+        result.buildingsOnly = buildingsOnly;
+        result.legacy = true;
+        return result;
+    }
+
     static ArrayList<Way> decode(JSONObject root) throws Exception {
         return decode(root, false);
     }
@@ -232,6 +458,11 @@ public class OfflineAtlas {
     // and vertices closer than ~4 m to the kept polyline are dropped, so a large overview stays
     // decoded instead of thrashing.
     static ArrayList<Way> decode(JSONObject root, boolean overview) throws Exception {
+        return decode(root, overview, false);
+    }
+
+    private static ArrayList<Way> decode(JSONObject root, boolean overview, boolean wallsOnly)
+            throws Exception {
         IndexedWays ways = new IndexedWays();
         JSONArray els = root.getJSONArray("elements");
         for (int i = 0; i < els.length(); i++) {
@@ -247,7 +478,8 @@ public class OfflineAtlas {
                                                     || "water".equals(tags.optString("natural"))
                                             ? "water"
                                             : "land";
-            if (overview && "building".equals(type)) continue;
+            if (overview && "building".equals(type) || wallsOnly && !"building".equals(type))
+                continue;
             Way w = new Way();
             w.type = type;
             w.kind = tags.optString("highway", "");
@@ -300,14 +532,22 @@ public class OfflineAtlas {
     }
 
     ArrayList<Way> ways(Area area, int zoom) {
-        if (closed) return new ArrayList<>();
+        if (closed || !DownloadedMaps.current(downloadGeneration)) return new ArrayList<>();
         if (area.eager != null) return area.eager;
         String key = area.source.getPath() + (zoom < OVERVIEW_ZOOM ? "#o" : "");
-        ArrayList<Way> ready = geometry.get(key);
+        ArrayList<Way> ready = readyGeometry(key);
         if (ready != null) return ready;
+        if (failedGeometry.contains(key)) return new ArrayList<>();
         if (!async) return loadWays(area, zoom < OVERVIEW_ZOOM);
         if (pending.size() < 8 && pending.add(key) && !loader.isShutdown()) {
             geometryRequests++;
+            MapTrace.record(
+                    MapTrace.Lane.IMPORT,
+                    MapTrace.Event.QUEUE,
+                    MapTrace.id(area),
+                    zoom,
+                    pending.size(),
+                    rasterRevision.get());
             loader.execute(
                     () -> {
                         try {
@@ -331,7 +571,7 @@ public class OfflineAtlas {
             String path = area.source.getPath();
             Long stamp = stamps.get(path);
             if (stamp == null || stamp != area.stamp) continue;
-            for (String suffix : new String[] {"", "#o"}) {
+            for (String suffix : new String[] {"", "#o", "#walls"}) {
                 ArrayList<Way> ready = previous.geometry.get(path + suffix);
                 if (ready != null) geometry.put(path + suffix, ready);
             }
@@ -340,59 +580,214 @@ public class OfflineAtlas {
 
     public void close() {
         closed = true;
+        MapTrace.unregisterSources(this);
+        DownloadedMaps.forget(this);
         if (loader != null) loader.shutdownNow();
         frames.evictAll();
         raster.clear();
         tiles.close();
         viewport.close();
+        ArrayList<AtlasDiskSource> obsolete = new ArrayList<>();
         synchronized (geometry) {
             geometry.evictAll();
+            for (IndexedWays source : diskGeometry.values()) obsolete.add(source.disk);
+            diskGeometry.clear();
+        }
+        for (AtlasDiskSource source : obsolete) source.close();
+    }
+
+    private boolean cacheGeometry(String key, ArrayList<Way> data) {
+        ArrayList<Way> retained = data;
+        HashMap<String, IndexedWays> replacements = new HashMap<>();
+        if (data instanceof IndexedWays) {
+            IndexedWays indexed = (IndexedWays) data;
+            if ((long) geometry.size() + indexed.estimatedBytes > geometry.maxSize()) {
+                retained = indexed.compact();
+                // Компактизация вне LruCache monitor: UI get не ждёт обхода большого источника.
+                for (Map.Entry<String, ArrayList<Way>> entry : geometry.snapshot().entrySet())
+                    if (entry.getValue() instanceof IndexedWays
+                            && !((IndexedWays) entry.getValue()).compacted)
+                        replacements.put(
+                                entry.getKey(), ((IndexedWays) entry.getValue()).compact());
+            }
+        }
+        // A synchronous wall lookup may finish decoding after close(), outside the loader.
+        synchronized (geometry) {
+            if (!closed && DownloadedMaps.current(downloadGeneration)) {
+                if (retained instanceof IndexedWays
+                        && ((IndexedWays) retained).estimatedBytes > geometry.maxSize())
+                    return false;
+                for (Map.Entry<String, IndexedWays> entry : replacements.entrySet())
+                    geometry.put(entry.getKey(), entry.getValue());
+                geometry.put(key, retained);
+                geometryLoads++;
+                rasterRevision.incrementAndGet();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private ArrayList<Way> readyGeometry(String key) {
+        ArrayList<Way> memory = geometry.get(key);
+        return memory != null ? memory : diskGeometry.get(key);
+    }
+
+    ArrayList<Way> loadWays(Area area) {
+        return loadWays(area, false);
+    }
+
+    ArrayList<Way> loadWays(Area area, boolean overview) {
+        String key = area.eager == null ? area.source.getPath() + (overview ? "#o" : "") : null;
+        boolean tracking = key != null && importingGeometry.add(key);
+        try {
+            long waiting = System.nanoTime();
+            synchronized (this) {
+                long acquired = System.nanoTime();
+                try {
+                    if (closed) return new ArrayList<>();
+                    if (area.eager != null) return area.eager;
+                    return loadSource(area, overview ? "#o" : "", overview, false);
+                } finally {
+                    MapTrace.record(
+                            MapTrace.Lane.MONITOR,
+                            MapTrace.Event.LOCK,
+                            MapTrace.id(this),
+                            acquired - waiting,
+                            System.nanoTime() - acquired,
+                            0);
+                }
+            }
+        } finally {
+            if (tracking) importingGeometry.remove(key);
         }
     }
 
-    private void cacheGeometry(String key, ArrayList<Way> data) {
-        // A synchronous wall lookup may finish decoding after close(), outside the loader.
-        synchronized (geometry) {
-            if (!closed) {
-                geometry.put(key, data);
+    private ArrayList<Way> loadSource(
+            Area area, String suffix, boolean overview, boolean wallsOnly) {
+        String key = area.source.getPath() + suffix;
+        ArrayList<Way> ready = readyGeometry(key);
+        if (ready != null) return ready;
+        if (closed || failedGeometry.contains(key)) return new ArrayList<>();
+        AtlasDiskSource source = null;
+        long traceStart = System.nanoTime();
+        MapTrace.record(
+                MapTrace.Lane.IMPORT,
+                MapTrace.Event.START,
+                MapTrace.id(area),
+                overview ? 1 : 0,
+                wallsOnly ? 1 : 0,
+                0);
+        try (DownloadedMaps.Lease ignored = DownloadedMaps.enter(downloadGeneration)) {
+            geometryStreams++;
+            source =
+                    AtlasDiskSource.build(
+                            area.source,
+                            geometryDirectory,
+                            overview,
+                            wallsOnly,
+                            this::wallRequestCancelled);
+            MapTrace.record(
+                    MapTrace.Lane.MONITOR,
+                    MapTrace.Event.SCAN,
+                    MapTrace.id(this),
+                    source.count,
+                    source.file.length(),
+                    wallsOnly ? 1 : 0);
+            if (source.compactBytes <= geometry.maxSize()
+                    && source.rawBytes <= AtlasViewport.MAX_WORK_BYTES) {
+                IndexedWays data = source.readSmall(this::wallRequestCancelled);
+                // Фактический вес индексов также проверяется до публикации в LRU.
+                if (data.compact().estimatedBytes <= geometry.maxSize()) {
+                    if (cacheGeometry(key, data)) {
+                        sourceOutcomes.remove(key);
+                        return readyGeometry(key);
+                    }
+                }
+            }
+            IndexedWays data = new IndexedWays();
+            data.disk = source;
+            data.tileFeatures = Collections.emptyList();
+            data.tileIndex = EMPTY_FEATURES;
+            data.labelIndex = EMPTY_LABELS;
+            data.estimatedBytes = 512;
+            synchronized (geometry) {
+                if (closed || !DownloadedMaps.current(downloadGeneration)) return new ArrayList<>();
+                diskGeometry.put(key, data);
+                sourceOutcomes.remove(key);
+                source = null;
                 geometryLoads++;
                 rasterRevision.incrementAndGet();
             }
+            return readyGeometry(key);
+        } catch (IOException | RuntimeException e) {
+            if (closed
+                    || !DownloadedMaps.current(downloadGeneration)
+                    || Thread.currentThread().isInterrupted()
+                    || e instanceof InterruptedIOException
+                    || e instanceof java.util.concurrent.CancellationException) {
+                if (wallsOnly) throw cancelledWalls(e);
+                return new ArrayList<>();
+            }
+            MapTrace.record(
+                    MapTrace.Lane.IMPORT,
+                    MapTrace.Event.ERROR,
+                    MapTrace.id(area),
+                    overview ? 1 : 0,
+                    wallsOnly ? 1 : 0,
+                    0);
+            if (!closed) {
+                sourceOutcomes.put(
+                        key,
+                        e instanceof FileNotFoundException
+                                ? MapTrace.SourceState.MISSING
+                                : MapTrace.SourceState.FAILED);
+                failedGeometry.add(key);
+            }
+            return new ArrayList<>();
+        } catch (OutOfMemoryError allocation) {
+            if (!closed) sourceOutcomes.put(key, MapTrace.SourceState.FAILED);
+            MapTrace.record(
+                    MapTrace.Lane.IMPORT,
+                    MapTrace.Event.OOM,
+                    MapTrace.id(area),
+                    overview ? 1 : 0,
+                    wallsOnly ? 1 : 0,
+                    0);
+            throw allocation;
+        } finally {
+            MapTrace.record(
+                    MapTrace.Lane.IMPORT,
+                    MapTrace.Event.FINISH,
+                    MapTrace.id(area),
+                    readyGeometry(key) == null ? 0 : 1,
+                    System.nanoTime() - traceStart,
+                    rasterRevision.get());
+            if (source != null) source.close();
         }
     }
 
-    synchronized ArrayList<Way> loadWays(Area area) {
-        if (closed) return new ArrayList<>();
-        if (area.eager != null) return area.eager;
-        String key = area.source.getPath();
-        ArrayList<Way> data = geometry.get(key);
-        if (data == null)
-            try {
-                data = decode(new JSONObject(new String(read(area.source), "UTF-8")));
-                cacheGeometry(key, data);
-            } catch (Exception e) {
-                data = new ArrayList<>();
-            }
-        return data;
-    }
-
-    synchronized ArrayList<Way> loadWays(Area area, boolean overview) {
-        if (closed) return new ArrayList<>();
-        if (!overview) return loadWays(area);
-        if (area.eager != null) return area.eager;
-        String key = area.source.getPath() + "#o";
-        ArrayList<Way> data = geometry.get(key);
-        if (data == null)
-            try {
-                data = decode(new JSONObject(new String(read(area.source), "UTF-8")), true);
-                cacheGeometry(key, data);
-            } catch (Exception e) {
-                data = new ArrayList<>();
-            }
-        return data;
-    }
-
     public List<double[]> buildingsNear(double lat, double lon, double radius) {
+        long start = System.nanoTime();
+        int results = -1;
+        try {
+            checkWallRequest();
+            List<double[]> walls = queryBuildings(lat, lon, radius);
+            checkWallRequest();
+            results = walls.size();
+            return walls;
+        } finally {
+            MapTrace.record(
+                    MapTrace.Lane.WALL,
+                    MapTrace.Event.FINISH,
+                    MapTrace.id(this),
+                    areas.size(),
+                    results,
+                    System.nanoTime() - start);
+        }
+    }
+
+    private List<double[]> queryBuildings(double lat, double lon, double radius) {
         double dy = radius / 111195.08, dx = dy / Math.cos(Math.toRadians(lat));
         ArrayList<double[]> buildings = new ArrayList<>();
         for (Area area : areas) {
@@ -413,10 +808,76 @@ public class OfflineAtlas {
     }
 
     Collection<Way> nearWays(Area area, double south, double west, double north, double east) {
-        ArrayList<Way> all = loadWays(area);
+        checkWallRequest();
+        ArrayList<Way> all = area.eager != null ? area.eager : readyGeometry(area.source.getPath());
+        if (all == null) all = loadWalls(area);
+        if (all instanceof IndexedWays && ((IndexedWays) all).disk != null) {
+            ArrayList<Way> nearby = new ArrayList<>();
+            try (DownloadedMaps.Lease ignored = DownloadedMaps.enter(downloadGeneration)) {
+                ((IndexedWays) all)
+                        .disk.readWays(
+                                nearby, south, west, north, east, true, this::wallRequestCancelled);
+            } catch (IOException ignored) {
+                if (closed
+                        || !DownloadedMaps.current(downloadGeneration)
+                        || Thread.currentThread().isInterrupted()
+                        || ignored instanceof InterruptedIOException) throw cancelledWalls(ignored);
+                // Не публикуем частичный набор стен при ошибке чтения.
+                throw new IllegalStateException("Cannot read atlas walls", ignored);
+            }
+            checkWallRequest();
+            return nearby;
+        }
         return all instanceof IndexedWays
                 ? ((IndexedWays) all).near(south, west, north, east)
                 : all;
+    }
+
+    private ArrayList<Way> loadWalls(Area area) {
+        String key = area.eager == null ? area.source.getPath() + "#walls" : null;
+        boolean tracking = key != null && importingGeometry.add(key);
+        try {
+            long waiting = System.nanoTime();
+            synchronized (this) {
+                long acquired = System.nanoTime();
+                try {
+                    checkWallRequest();
+                    if (area.eager != null) return area.eager;
+                    ArrayList<Way> data = loadSource(area, "#walls", false, true);
+                    checkWallRequest();
+                    if (failedGeometry.contains(area.source.getPath() + "#walls"))
+                        throw new IllegalStateException("Cannot load atlas walls");
+                    return data;
+                } finally {
+                    MapTrace.record(
+                            MapTrace.Lane.MONITOR,
+                            MapTrace.Event.LOCK,
+                            MapTrace.id(this),
+                            acquired - waiting,
+                            System.nanoTime() - acquired,
+                            1);
+                }
+            }
+        } finally {
+            if (tracking) importingGeometry.remove(key);
+        }
+    }
+
+    private void checkWallRequest() {
+        if (wallRequestCancelled()) throw cancelledWalls(null);
+    }
+
+    boolean wallRequestCancelled() {
+        return closed
+                || !DownloadedMaps.current(downloadGeneration)
+                || Thread.currentThread().isInterrupted();
+    }
+
+    private static java.util.concurrent.CancellationException cancelledWalls(Throwable cause) {
+        java.util.concurrent.CancellationException cancelled =
+                new java.util.concurrent.CancellationException("Atlas walls cancelled");
+        if (cause != null) cancelled.initCause(cause);
+        return cancelled;
     }
 
     String visibilityStamp(double lat, double lon, double radius) {
@@ -454,6 +915,46 @@ public class OfflineAtlas {
     }
 
     public void draw(Canvas canvas, MapView map, boolean hybrid) {
+        if (closed || !DownloadedMaps.current(downloadGeneration)) {
+            lastCoverage = new AtlasCoverage();
+            lastCoverageFraction = lastColorCoverageFraction = 0;
+            return;
+        }
+        try {
+            drawScene(canvas, map, hybrid);
+        } finally {
+            MapTrace.record(
+                    hybrid ? MapTrace.Lane.COLOR : MapTrace.Lane.SOURCE,
+                    MapTrace.Event.FINISH,
+                    rasterRevision.get(),
+                    "tiles".equals(renderBackend)
+                            ? 1
+                            : "viewport-worker".equals(renderBackend) ? 2 : 3,
+                    fallbackCode(),
+                    loadingLayers);
+        }
+    }
+
+    private int fallbackCode() {
+        switch (tileFallback) {
+            case "none":
+                return 0;
+            case "disk-source":
+                return 1;
+            case "geometry-not-ready-replay":
+                return 2;
+            case "tile-work-memory":
+                return 3;
+            case "visible-vertex-budget":
+                return 4;
+            case "viewport-memory":
+                return 5;
+            default:
+                return 6;
+        }
+    }
+
+    private void drawScene(Canvas canvas, MapView map, boolean hybrid) {
         if (!hybrid) {
             lastCoverage = new AtlasCoverage();
             lastCoverageFraction = lastColorCoverageFraction = 0;
@@ -473,6 +974,12 @@ public class OfflineAtlas {
                                 || matrix[Matrix.MSKEW_Y] != 0f
                                 || matrix[Matrix.MTRANS_X] != Math.rint(matrix[Matrix.MTRANS_X])
                                 || matrix[Matrix.MTRANS_Y] != Math.rint(matrix[Matrix.MTRANS_Y]))) {
+            AtlasTiles.Snapshot snapshot = buildTileSnapshot(map, hybrid, false);
+            if (snapshot.hasDisk() && viewport.supports(map.getWidth(), map.getHeight())) {
+                tileFallback = "disk-source";
+                drawViewport(canvas, map, hybrid, snapshot);
+                return;
+            }
             drawGeometry(canvas, map, hybrid);
             return;
         }
@@ -480,6 +987,12 @@ public class OfflineAtlas {
         if (async) {
             AtlasTiles.Snapshot snapshot = tileSnapshot(map, hybrid);
             if (snapshot != null) {
+                if (snapshot.hasDisk()) {
+                    tileFallback = "disk-source";
+                    tiles.scene(tileFallback);
+                    drawViewport(canvas, map, hybrid, snapshot);
+                    return;
+                }
                 if (loadingLayers > 0
                         && viewport.hasReady(
                                 snapshot,
@@ -523,7 +1036,8 @@ public class OfflineAtlas {
                 }
                 return;
             }
-            if ("visible-vertex-budget".equals(tileFallback)
+            if (("visible-vertex-budget".equals(tileFallback)
+                            || "viewport-memory".equals(tileFallback))
                     && viewport.supports(map.getWidth(), map.getHeight())) {
                 String reason = tileFallback;
                 snapshot = buildTileSnapshot(map, hybrid, false);
@@ -607,6 +1121,13 @@ public class OfflineAtlas {
                 coverage.fraction(
                         AtlasCoverage.visible(
                                 map.getWidth(), map.getHeight(), map.viewportFraction));
+        MapTrace.record(
+                hybrid ? MapTrace.Lane.COLOR : MapTrace.Lane.SOURCE,
+                MapTrace.Event.DRAW,
+                rasterRevision.get(),
+                "tiles".equals(renderBackend) ? 1 : "viewport-worker".equals(renderBackend) ? 2 : 3,
+                loadingLayers,
+                Math.round(fraction * 1000));
         if (hybrid) lastColorCoverageFraction = fraction;
         else {
             lastCoverage = coverage;
@@ -723,6 +1244,8 @@ public class OfflineAtlas {
         double scale = 1 << map.zoom;
         double viewportLeft = (map.getWidth() - visibleWidth) / 2;
         double viewportTop = (map.getHeight() - visibleHeight) / 2;
+        // Полный индекс pack, включая невыбранную редакцию. Не читаем файлы/геометрию на UI.
+        Map<String, String> familyKeys = replayFamilies();
         for (Area a : areas) {
             if (a.overview && map.zoom >= 13
                     || !a.overview && !a.legacy && map.zoom < 13
@@ -766,7 +1289,16 @@ public class OfflineAtlas {
                                     + a.east
                                     + ":"
                                     + a.buildingsOnly,
-                            indexed != null);
+                            indexed != null,
+                            a.packKey == null ? null : familyKeys.get(a.packKey));
+            if (indexed != null) layer.disk = indexed.disk;
+            MapTrace.record(
+                    MapTrace.Lane.SOURCE,
+                    MapTrace.Event.REPLAY,
+                    MapTrace.id(a),
+                    a.stamp,
+                    indexed == null ? 0 : 1,
+                    indexed != null && indexed.disk != null ? 2 : 1);
             // Дешёвый BVH admission: невидимые вершины области не отключают тайлы.
             // При потенциально насыщенном видимом наборе legacy сохраняет глобальный
             // viewport-бюджет и его порядок отбора после упрощения.
@@ -811,7 +1343,7 @@ public class OfflineAtlas {
     }
 
     private void drawGeometryLegacy(Canvas canvas, MapView map, boolean hybrid) {
-        if (closed || map.zoom < 8) return;
+        if (closed || !DownloadedMaps.current(downloadGeneration) || map.zoom < 8) return;
         if (frameX != map.cx
                 || frameY != map.cy
                 || frameZoom != map.zoom
@@ -860,7 +1392,11 @@ public class OfflineAtlas {
                     || frame.initialVertices != lastVertices) {
                 AtlasGeometry projected =
                         data instanceof IndexedWays ? ((IndexedWays) data).renderGeometry : null;
-                if (projected == null) projected = new AtlasGeometry(data);
+                if (projected == null)
+                    projected =
+                            data instanceof IndexedWays && ((IndexedWays) data).compacted
+                                    ? new AtlasGeometry((IndexedWays) data, map)
+                                    : new AtlasGeometry(data);
                 frame = new AtlasGeometry.Frame(projected, a.stamp, map, lastVertices);
                 preparedFrames++;
                 frames.put(a, frame);
@@ -930,7 +1466,11 @@ public class OfflineAtlas {
                     paint.setColor(hybrid ? Color.WHITE : 0xff33463c);
                     paint.setTypeface(LABEL_FONT);
                     paint.setTextSize(map.dp(11));
-                    float xx = map.screenX(w.coords[1]), yy = sy(w.coords[0], map, scale);
+                    float xx = AtlasGeometry.screenX(shape.entry.xy[0], map),
+                            yy =
+                                    (float)
+                                            ((shape.entry.xy[1] - map.cy) * scale
+                                                    + map.getHeight() / 2.0);
                     if (xx > 0
                             && xx < map.getWidth() - map.dp(90)
                             && yy > map.dp(20)

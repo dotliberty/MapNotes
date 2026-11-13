@@ -16,7 +16,8 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class MainActivity extends Activity implements android.location.LocationListener {
+public class MainActivity extends Activity
+        implements android.location.LocationListener, DownloadedMaps.Listener {
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(Language.wrap(base));
     }
@@ -340,6 +341,32 @@ public class MainActivity extends Activity implements android.location.LocationL
                             (d, w) -> getPreferences(0).edit().putBoolean("intro", true).apply())
                     .show();
         }
+        DownloadedMaps.observe(this);
+    }
+
+    @Override
+    public void downloadedMapsChanged() {
+        if (destroyed) return;
+        map.online = MapNetwork.enabled(this);
+        refresh();
+    }
+
+    void confirmClearDownloadedMaps() {
+        if (DownloadedMaps.clearing) {
+            toast(Language.text(this, R.string.clear_maps_busy));
+            return;
+        }
+        new AtlasUi.DialogBuilder(this, offlineButton)
+                .setTitle(Language.text(this, R.string.clear_maps_title))
+                .setMessage(Language.text(this, R.string.clear_maps_scope))
+                .setNegativeButton(Language.text(this, R.string.cancel), null)
+                .setPositiveButton(
+                        Language.text(this, R.string.clear_maps_title),
+                        (d, w) -> {
+                            DownloadedMaps.requestClear(this);
+                            refresh();
+                        })
+                .show();
     }
 
     void showWalks() {
@@ -567,6 +594,18 @@ public class MainActivity extends Activity implements android.location.LocationL
         readNewPoints();
         if (!MapDownloadService.running && !map.worldDescription().isEmpty())
             downloadStatus.setText(map.worldDescription());
+        DownloadedMaps.Result cleanup = DownloadedMaps.lastResult(this);
+        if (DownloadedMaps.clearing || cleanup != null && !MapDownloadService.running)
+            downloadStatus.setText(
+                    Language.text(
+                            this,
+                            DownloadedMaps.clearing
+                                    ? R.string.clear_maps_busy
+                                    : cleanup.success
+                                            ? R.string.clear_maps_done
+                                            : R.string.clear_maps_failed));
+        offlineButton.setEnabled(!DownloadedMaps.clearing);
+        onlineButton.setEnabled(!DownloadedMaps.clearing);
         status.setText(
                 (WalkService.running ? WalkService.currentStatus(this) : liveStatus)
                         + "\n"
@@ -804,6 +843,7 @@ public class MainActivity extends Activity implements android.location.LocationL
 
     protected void onDestroy() {
         destroyed = true;
+        DownloadedMaps.forget(this);
         if (spawnZoneController != null) spawnZoneController.close();
         dataWorker.shutdownNow();
         map.close();
@@ -832,7 +872,9 @@ public class MainActivity extends Activity implements android.location.LocationL
             Language.text(this, "language"),
             Language.text(this, "imagery_title"),
             getString(R.string.motion_title),
-            getString(R.string.zones_title)
+            getString(R.string.zones_title),
+            Language.text(this, R.string.map_trace_export),
+            Language.text(this, R.string.clear_maps_title)
         };
         new AtlasUi.DialogBuilder(this, anchor)
                 .setTitle(Language.text(this, "map_menu"))
@@ -852,6 +894,8 @@ public class MainActivity extends Activity implements android.location.LocationL
                             else if (w == 7) map.disconnectWorld();
                             else if (w == 8) Language.show(this);
                             else if (w == 11) spawnZoneController.show();
+                            else if (w == 12) exportMapTrace();
+                            else if (w == 13) confirmClearDownloadedMaps();
                             else if (w == 10)
                                 startActivityForResult(
                                         new Intent(this, MovementActivity.class), 130);
@@ -939,8 +983,55 @@ public class MainActivity extends Activity implements android.location.LocationL
         InputStream open() throws Exception;
     }
 
+    private String pendingMapTrace;
+
+    void exportMapTrace() {
+        pendingMapTrace = MapTrace.snapshot();
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.setType("text/plain");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_TITLE, "MapNotes-map-trace.txt");
+        startActivityForResult(intent, 131);
+    }
+
     protected void onActivityResult(int r, int result, Intent data) {
         super.onActivityResult(r, result, data);
+        if (r == 131) {
+            String trace = pendingMapTrace;
+            pendingMapTrace = null;
+            if (result == RESULT_OK && data != null && data.getData() != null && trace != null) {
+                android.net.Uri destination = data.getData();
+                new Thread(
+                                () -> {
+                                    boolean saved = false;
+                                    try (java.io.OutputStream out =
+                                            getContentResolver().openOutputStream(destination)) {
+                                        if (out == null)
+                                            throw new IOException("Cannot open trace destination");
+                                        out.write(
+                                                trace.getBytes(
+                                                        java.nio.charset.StandardCharsets.UTF_8));
+                                        saved = true;
+                                    } catch (IOException | RuntimeException failure) {
+                                        saved = false;
+                                    }
+                                    final boolean success = saved;
+                                    runOnUiThread(
+                                            () ->
+                                                    toast(
+                                                            Language.text(
+                                                                    this,
+                                                                    success
+                                                                            ? R.string
+                                                                                    .map_trace_saved
+                                                                            : R.string
+                                                                                    .map_trace_failed)));
+                                },
+                                "map-trace-export")
+                        .start();
+            }
+            return;
+        }
         if (r == ZoneShapeActivity.REQUEST) {
             if (spawnZoneController != null) spawnZoneController.shapeResult(data);
             return;
@@ -1024,6 +1115,10 @@ public class MainActivity extends Activity implements android.location.LocationL
     }
 
     void downloadArea() {
+        if (DownloadedMaps.clearing) {
+            toast(Language.text(this, R.string.clear_maps_busy));
+            return;
+        }
         if (MapDownloadService.running) {
             new AtlasUi.DialogBuilder(this, offlineButton)
                     .setTitle(Language.text(this, R.string.map_download_in_progress))
@@ -1074,6 +1169,9 @@ public class MainActivity extends Activity implements android.location.LocationL
                         },
                         (d, i) -> selectAreaSize(i == 1))
                 .setNegativeButton(Language.text(this, R.string.cancel), null)
+                .setNeutralButton(
+                        Language.text(this, R.string.clear_maps_title),
+                        (d, w) -> confirmClearDownloadedMaps())
                 .show();
     }
 
